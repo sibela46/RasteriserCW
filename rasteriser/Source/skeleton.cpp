@@ -112,7 +112,7 @@ void DrawPolygonEdges( screen* screen, const vector<vec4>& vertices, vec3 color 
   // Transform each vertex from 3D world position to 2D image position:
   vector<ivec2> projectedVertices( V );
   for( int i = 0; i < V; ++i ){
-    VertexShader( vertices[i] - cameraPos, projectedVertices[i] );
+    VertexShader( vertices[i], projectedVertices[i] );
   }
   // Loop over all vertices and draw the edge from it to the next vertex:
   for( int i = 0; i < V; ++i ){
@@ -165,13 +165,14 @@ void ComputePolygonRows( const vector<ivec2>& vertexPixels, vector<ivec2>& leftP
     Interpolate(vertexPixels[i], vertexPixels[j], result);
 
     for (int n = 0; n < pixels; ++n) {
-      int pos = result[n].y - minimumValue;
-      if (result[n].x <= leftPixels[pos].x) {
-        // cout << result[pos].x << ", " << leftPixels[pos].x << endl;
-        leftPixels[pos] = result[n];
-      }
-      if (result[n].x >= rightPixels[pos].x) {
-        rightPixels[pos] = result[n];
+      if (result[n].y >= minimumValue) {
+        int pos = result[n].y - minimumValue;
+        if (result[n].x < leftPixels[pos].x) {
+          leftPixels[pos] = result[n];
+        }
+        if (result[n].x > rightPixels[pos].x) {
+          rightPixels[pos] = result[n];
+        }
       }
     }
   }
@@ -179,12 +180,7 @@ void ComputePolygonRows( const vector<ivec2>& vertexPixels, vector<ivec2>& leftP
 
 void DrawRows(screen* screen, const vector<ivec2>& leftPixels, const vector<ivec2>& rightPixels, vec3 color){
   for (int i = 0; i < leftPixels.size(); i++){
-    int size = abs(rightPixels[i].x - leftPixels[i].x);
-    vector<ivec2> result(size);
-    Interpolate(rightPixels[i], leftPixels[i], result);
-    for (int j = 0; j < size; j++){
-      PutPixelSDL(screen, result[j].x, result[j].y, color);
-    }
+    DrawLineSDL(screen, leftPixels[i], rightPixels[i], color);
   }
 }
 
