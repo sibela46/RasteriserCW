@@ -103,6 +103,7 @@ void Interpolate( ivec2 a, ivec2 b, vector<ivec2>& result ) {
   int N = result.size();
   vec2 step = vec2(b-a) / float(max(N-1,1));
   vec2 current( a );
+  current = a;
   for( int i=0; i<N; ++i ) {
     result[i] = current;
     current += step;
@@ -150,7 +151,7 @@ void ComputePolygonRows( const vector<ivec2>& vertexPixels, vector<ivec2>& leftP
       minimumValue = vertexPixels[i].y;
     }
   }
-  const int ROWS = maximumValue - minimumValue;
+  const int ROWS = (maximumValue - minimumValue) + 1;
   std::cout << "Number of rows: " << ROWS << "\n";
 
   // 2. Resize leftPixels and rightPixels
@@ -170,13 +171,16 @@ void ComputePolygonRows( const vector<ivec2>& vertexPixels, vector<ivec2>& leftP
   // linear interpolation to find the x-coordinate for
   // each row it occupies. Update the corresponding
   // values in rightPixels and leftPixels.
+  V = 2;
   for (int i = 0; i < V; ++i) {
     int j = (i+1)%V;
     ivec2 delta = glm::abs(vertexPixels[i] - vertexPixels[j]);
     int pixels = glm::max(delta.x, delta.y) + 1;
     vector<ivec2> result(pixels);
     Interpolate(vertexPixels[i], vertexPixels[j], result);
+
     for (int n = 0; n < pixels; ++n) {
+      cout << "Vertex x: " << result[i].x << " and y: " << result[i].y << "\n";
       if (result[n].x < leftPixels[n].x) {
         leftPixels[n] = result[n];
       }
