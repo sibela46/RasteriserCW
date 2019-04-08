@@ -3,8 +3,21 @@
 
 // Defines a simple test model: The Cornel Box
 
+#include <iostream>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <vector>
+#include <stdint.h>
+#include <sstream>
+#include <string>
+#include "RotationHandler.h"
+
+using namespace std;
+using glm::vec3;
+using glm::mat3;
+using glm::vec4;
+using glm::mat4;
+using glm::vec2;
 
 // Used to describe a triangular surface:
 class Triangle
@@ -20,6 +33,11 @@ public:
 		: v0(v0), v1(v1), v2(v2), color(color)
 	{
 		ComputeNormal();
+	}
+
+	void ReverseNormal() {
+		normal *= -1;
+		normal.w *= -1;
 	}
 
 	void ComputeNormal()
@@ -48,7 +66,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec3 yellow( 0.75f, 0.75f, 0.15f );
 	vec3 green(  0.15f, 0.75f, 0.15f );
 	vec3 cyan(   0.15f, 0.75f, 0.75f );
-	vec3 blue(   0.15f, 0.15f, 0.75f );
+	vec3 blue(   0.15f, 0.55f, 1.0f );
 	vec3 purple( 0.75f, 0.15f, 0.75f );
 	vec3 white(  0.75f, 0.75f, 0.75f );
 
@@ -71,20 +89,20 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec4 H(0,L,L,1);
 
 	// Floor:
-	triangles.push_back( Triangle( C, B, A, green ) );
-	triangles.push_back( Triangle( C, D, B, green ) );
+	triangles.push_back( Triangle( C, B, A, blue ) );
+	triangles.push_back( Triangle( C, D, B, blue ) );
 
 	// Left wall
-	triangles.push_back( Triangle( A, E, C, purple ) );
-	triangles.push_back( Triangle( C, E, G, purple ) );
+	triangles.push_back( Triangle( A, E, C, white ) );
+	triangles.push_back( Triangle( C, E, G, white ) );
 
 	// Right wall
-	triangles.push_back( Triangle( F, B, D, yellow ) );
-	triangles.push_back( Triangle( H, F, D, yellow ) );
+	triangles.push_back( Triangle( F, B, D, white ) );
+	triangles.push_back( Triangle( H, F, D, white ) );
 
 	// Ceiling
-	triangles.push_back( Triangle( E, F, G, cyan ) );
-	triangles.push_back( Triangle( F, H, G, cyan ) );
+	triangles.push_back( Triangle( E, F, G, white ) );
+	triangles.push_back( Triangle( F, H, G, white ) );
 
 	// Back wall
 	triangles.push_back( Triangle( G, D, C, white ) );
@@ -92,12 +110,12 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 
 	// ---------------------------------------------------------------------------
 	// Short block
-
+	/*
 	A = vec4(290,0,114,1);
 	B = vec4(130,0, 65,1);
 	C = vec4(240,0,272,1);
 	D = vec4( 82,0,225,1);
-	       
+
 	E = vec4(290,165,114,1);
 	F = vec4(130,165, 65,1);
 	G = vec4(240,165,272,1);
@@ -130,7 +148,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	B = vec4(265,0,296,1);
 	C = vec4(472,0,406,1);
 	D = vec4(314,0,456,1);
-	       
+
 	E = vec4(423,330,247,1);
 	F = vec4(265,330,296,1);
 	G = vec4(472,330,406,1);
@@ -156,7 +174,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	triangles.push_back( Triangle(G,F,E,blue) );
 	triangles.push_back( Triangle(G,H,F,blue) );
 
-
+	*/
 	// ----------------------------------------------
 	// Scale to the volume [-1,1]^3
 
@@ -181,9 +199,80 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 		triangles[i].v0.w = 1.0;
 		triangles[i].v1.w = 1.0;
 		triangles[i].v2.w = 1.0;
-		
+
 		triangles[i].ComputeNormal();
 	}
+}
+
+void LoadBunnyModel( std::vector<Triangle>& model ) {
+
+  vector<vec4> temp_vertices;
+	int prevIndex = model.size();
+
+  std::ifstream infile("bunny.obj");
+  std::string line;
+
+  while (std::getline(infile, line)) {
+    std::istringstream iss(line);
+    char l;
+
+    if (!(iss >> l)) { break; } // error
+    if (l == 'v') {
+      float a, b, c;
+      if (!(iss >> a >> b >> c)) { break; }
+      temp_vertices.push_back(vec4(a, b, c, 1.0f));
+    } else if (l == 'f') {
+      float a, b, c;
+      if (!(iss >> a >> b >> c)) { break; }
+
+      model.push_back(Triangle(temp_vertices[a-1], temp_vertices[b-1], temp_vertices[c-1], vec3(1, 1, 1)));
+
+    }
+  }
+
+  // ----------------------------------------------
+  // Scale to the volume [-1,1]^3
+	mat4 R;
+	RotationMatrixByAngle(0.0f, 90.0f, 0.0f, R);
+
+  for( size_t i=prevIndex; i<model.size(); ++i )
+  {
+
+		model[i].v0 = R * model[i].v0;
+		model[i].v1 = R * model[i].v1;
+		model[i].v2 = R * model[i].v2;
+
+		model[i].v0 *= 5;
+		model[i].v1 *= 5;
+		model[i].v2 *= 5;
+
+		model[i].v0 += vec4(1,1,1,1);
+		model[i].v1 += vec4(1,1,1,1);
+		model[i].v2 += vec4(1,1,1,1);
+
+    model[i].v0 -= vec4(1,1,1,1);
+    model[i].v1 -= vec4(1,1,1,1);
+    model[i].v2 -= vec4(1,1,1,1);
+
+    model[i].v0.x *= -1;
+    model[i].v1.x *= -1;
+    model[i].v2.x *= -1;
+
+    model[i].v0.y *= -1;
+    model[i].v1.y *= -1;
+    model[i].v2.y *= -1;
+
+		model[i].v0.w = 1.0;
+		model[i].v1.w = 1.0;
+		model[i].v2.w = 1.0;
+
+		model[i].v0 += vec4(0,0.6,0.1,0);
+		model[i].v1 += vec4(0,0.6,0.1,0);
+		model[i].v2 += vec4(0,0.6,0.1,0);
+
+    model[i].ComputeNormal();
+		model[i].ReverseNormal();
+  }
 }
 
 #endif

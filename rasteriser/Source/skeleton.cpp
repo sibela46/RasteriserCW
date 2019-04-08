@@ -1,8 +1,14 @@
 #include <iostream>
+#include<fstream>
 #include <glm/glm.hpp>
 #include <SDL.h>
 #include "SDLauxiliary.h"
 #include "TestModelH.h"
+#include "TestModelH.h"
+#include "Lightbulb.h"
+#include "Aperture.h"
+#include "Sphere.h"
+#include "Global.h"
 #include <stdint.h>
 
 using namespace std;
@@ -12,23 +18,6 @@ using glm::vec4;
 using glm::mat4;
 using glm::vec2;
 using glm::ivec2;
-
-SDL_Event event;
-
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 256
-#define FULLSCREEN_MODE false
-
-struct Pixel {
-  int x;
-  int y;
-  float zinv;
-  vec4 pos3d;
-};
-
-struct Vertex {
-  vec4 position;
-};
 
 /* ----------------------------------------------------------------------------*/
 /* FUNCTIONS                                                                   */
@@ -45,19 +34,6 @@ void DrawRows(screen* screen, const vector<Pixel>& leftPixels, const vector<Pixe
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, vec3 color  );
 void PixelShader( screen* screen, const Pixel& p );
 
-float xaw = 0.f;
-float yaw = 0.f;
-float zaw = 0.f;
-vec4 cameraPos = vec4(0.f, 0.f, -2.5f, 1.f);
-float focalLength = SCREEN_HEIGHT/2;
-float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
-/* Light source variables */
-vec4 lightPos(0, -0.5, -0.7, 1.0);
-vec3 lightPower = 5.1f*vec3( 1, 1, 1 );
-vec3 indirectLightPowerPerArea = 0.5f*vec3( 1, 1, 1 );
-vec4 currentNormal;
-vec3 currentReflectance;
-
 int main( int argc, char* argv[] )
 {
 
@@ -65,6 +41,10 @@ int main( int argc, char* argv[] )
 
   vector<Triangle> triangles;
   LoadTestModel(triangles);
+  // LoadBunnyModel(triangles);
+  float offset = lightPos.y;
+  // LoadApertureHexagon(triangles, 0.05, offset);
+  LoadLightModel(triangles);
 
   /* Correct the light's position wrt our camera */
   lightPos = lightPos - cameraPos;
@@ -75,6 +55,7 @@ int main( int argc, char* argv[] )
       int lightX = focalLength * (lightPos.x / lightPos.z) + SCREEN_WIDTH / 2;
       int lightY = focalLength * (lightPos.y / lightPos.z) + SCREEN_HEIGHT / 2;
       PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
+      // DrawSphere(screen);
       SDL_Renderframe(screen);
     }
 
@@ -108,6 +89,7 @@ void Draw(screen* screen, vector<Triangle> triangles )
       currentReflectance = color;
       for(int v = 0; v < 3; ++v) {
           vertices[v].position = M * vertices[v].position;
+          vertices[v].material = basicShader;
       }
       DrawPolygon( screen, vertices, color);
   }
@@ -133,8 +115,20 @@ void PixelShader( screen* screen, const Pixel& pixel ) {
     vec3 p = currentReflectance;
     vec3 P = lightPower / A;
     vec3 D = P * max(glm::dot(n, r_hat), 0.0f);
+    vec3 diffuse = p * D;
 
-    vec3 R = p * (D + indirectLightPowerPerArea);
+    /* Ambient */
+    vec3 ambient = p * basicShader.ambient;
+
+    /* Specular */
+    vec4 viewDir = glm::normalize(cameraPos - pixel.pos3d);
+    vec4 reflectDir = reflect(r_hat, currentNormal);
+    float spec = pow(max(glm::dot(viewDir, reflectDir), 0.0f), basicShader.shininess);
+    vec3 specular = 0.5f * p * (spec * basicShader.specular);
+
+    // vec3 R = p * D + indirectLightPowerPerArea;
+
+    vec3 R = diffuse + p * indirectLightPowerPerArea;
 
     if ( pixel.zinv > depthBuffer[y][x] ) {
       depthBuffer[y][x] = pixel.zinv;
