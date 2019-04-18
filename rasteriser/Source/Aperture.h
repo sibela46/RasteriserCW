@@ -10,13 +10,13 @@ using glm::mat3;
 using glm::vec4;
 using glm::mat4;
 
-void LoadHexagonVertices(vector<vec4> &vertices) {
-  vec4 A( -0.5, 0.65, -2, 1.0 ); // v0 - top left
-  vec4 B( 0.5, 0.65, -2, 1.0 ); // v1
-  vec4 C( 0.75, 0, -2, 1.0 ); // v2
-  vec4 D( 0.5, -0.65, -2, 1.0 ); // v3
-  vec4 E( -0.5, -0.65, -2, 1.0 ); // v4
-  vec4 F( -0.75, 0, -2, 1.0 ); // v5 - left middle
+void LoadHexagonVertices(vector<vec4> &vertices, float x, float y) {
+  vec4 A( x - 0.5, y + 0.65, -2, 1.0 ); // v0 - top left
+  vec4 B( x + 0.5, y + 0.65, -2, 1.0 ); // v1
+  vec4 C( x + 0.75, y, -2, 1.0 ); // v2
+  vec4 D( x + 0.5, y - 0.65, -2, 1.0 ); // v3
+  vec4 E( x - 0.5, y - 0.65, -2, 1.0 ); // v4
+  vec4 F( x - 0.75, y, -2, 1.0 ); // v5 - left middle
 
   vertices.push_back(A);
   vertices.push_back(B);
@@ -26,12 +26,12 @@ void LoadHexagonVertices(vector<vec4> &vertices) {
   vertices.push_back(F);
 }
 
-void LoadApertureHexagon(vector<Triangle> &hexagon, float scale, float offset) {
+void LoadApertureHexagon(vector<Triangle> &hexagon, vec2 centrePoint, float scale) {
   vector<vec4> vertices;
-  LoadHexagonVertices(vertices);
+  centrePoint *= scale;
+  LoadHexagonVertices(vertices, centrePoint.x, centrePoint.y);
 
   for (int i = 0; i < vertices.size(); i++) {
-    vertices[i].y += (offset);
     vertices[i].x *= scale;
     vertices[i].y *= scale;
   }

@@ -33,6 +33,7 @@ void TransformationMatrix( glm::mat4x4& M );
 void DrawRows(screen* screen, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 color);
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, vec3 color  );
 void PixelShader( screen* screen, const Pixel& p );
+vec2 generateLensFlare();
 
 int main( int argc, char* argv[] )
 {
@@ -43,19 +44,22 @@ int main( int argc, char* argv[] )
   LoadTestModel(triangles);
   // LoadBunnyModel(triangles);
   float offset = lightPos.y;
-  // LoadApertureHexagon(triangles, 0.05, offset);
   LoadLightModel(triangles);
 
   /* Correct the light's position wrt our camera */
   lightPos = lightPos - cameraPos;
-
   while ( Update())
-    {
+  {
+      int lastIndex = triangles.size();
+      for (int i = 0; i < 3; i++) {
+        vec2 centrePoint = generateLensFlare();
+        LoadApertureHexagon(triangles, centrePoint, drand48()/10);
+      }
       Draw(screen, triangles);
       int lightX = focalLength * (lightPos.x / lightPos.z) + SCREEN_WIDTH / 2;
       int lightY = focalLength * (lightPos.y / lightPos.z) + SCREEN_HEIGHT / 2;
       PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
-      // DrawSphere(screen);
+      triangles.erase(triangles.begin() + lastIndex, triangles.end());
       SDL_Renderframe(screen);
     }
 
@@ -246,6 +250,19 @@ void DrawPolygon(screen* screen, const vector<Vertex>& vertices, vec3 color )
   DrawRows(screen, leftPixels, rightPixels, color);
 }
 
+vec2 generateLensFlare() {
+  float scaleFactor = drand48();
+
+  vec4 newLightPos = lightPos - cameraPos;
+  int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
+  int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
+  vec2 light = vec2(lightX, lightY);
+  vec2 centre = vec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+  vec2 A = light - centre;
+  vec2 drawPos = A * (scaleFactor + 1);
+
+  return drawPos;
+}
 
 /*Place updates of parameters here*/
 bool Update()
@@ -338,17 +355,3 @@ void TransformationMatrix(mat4& M) {
 
   M = R;
 }
-
-// void DrawPolygonEdges( screen* screen, const vector<Vertex>& vertices, vec3 color ){
-  //   int V = vertices.size();
-  //   // Transform each vertex from 3D world position to 2D image position:
-  //   vector<Pixel> projectedVertices( V );
-  //   for( int i = 0; i < V; ++i ){
-    //     VertexShader( vertices[i], projectedVertices[i] );
-    //   }
-    //   // Loop over all vertices and draw the edge from it to the next vertex:
-    //   for( int i = 0; i < V; ++i ){
-      //     int j = (i+1)%V; // The next vertex
-      //     DrawLineSDL( screen, projectedVertices[i], projectedVertices[j], color );
-      //   }
-      // }
