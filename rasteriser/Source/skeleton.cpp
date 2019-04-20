@@ -23,7 +23,7 @@ using glm::ivec2;
 /* FUNCTIONS                                                                   */
 
 bool Update();
-void Draw(screen* screen, vector<Triangle> triangles );
+void Draw(screen* screen, vector<Triangle> triangles, int lastIndex );
 void VertexShader( const Vertex& vertices, Pixel& projPos );
 void Interpolate( Pixel a, Pixel b, vector<Pixel>& result );
 void DrawLineSDL( screen* screen, ivec2 a, ivec2 b, vec3 color );
@@ -33,7 +33,8 @@ void TransformationMatrix( glm::mat4x4& M );
 void DrawRows(screen* screen, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 color);
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, vec3 color  );
 void PixelShader( screen* screen, const Pixel& p );
-vec2 generateLensFlare();
+vec2 generateLensFlare(float scaleFactor);
+void getLensFlare(vector<vec2>& positions, vector<float>& scales);
 
 int main( int argc, char* argv[] )
 {
@@ -48,14 +49,23 @@ int main( int argc, char* argv[] )
 
   /* Correct the light's position wrt our camera */
   lightPos = lightPos - cameraPos;
+  vector<vec2> randomPositions(3);
+  vector<float> randomScales(3);
+  getLensFlare(randomPositions, randomScales);
   while ( Update())
   {
       int lastIndex = triangles.size();
-      for (int i = 0; i < 3; i++) {
-        vec2 centrePoint = generateLensFlare();
-        LoadApertureHexagon(triangles, centrePoint, drand48()/10);
+      if (prevCameraPos != cameraPos){
+        prevCameraPos = cameraPos;
+        randomPositions.clear();
+        randomScales.clear();
+        getLensFlare(randomPositions, randomScales);
       }
-      Draw(screen, triangles);
+      for (int i = 0; i < 3; i++) {
+        LoadApertureHexagon(triangles, randomPositions[i], randomScales[i]);
+      }
+
+      Draw(screen, triangles, lastIndex);
       int lightX = focalLength * (lightPos.x / lightPos.z) + SCREEN_WIDTH / 2;
       int lightY = focalLength * (lightPos.y / lightPos.z) + SCREEN_HEIGHT / 2;
       PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
@@ -70,7 +80,7 @@ int main( int argc, char* argv[] )
 }
 
 /*Place your drawing here*/
-void Draw(screen* screen, vector<Triangle> triangles )
+void Draw(screen* screen, vector<Triangle> triangles, int lastIndex )
 {
   /* Clear buffer */
   memset(screen->buffer, 0, screen->height*screen->width*sizeof(uint32_t));
@@ -92,7 +102,7 @@ void Draw(screen* screen, vector<Triangle> triangles )
       currentNormal = triangles[i].normal;
       currentReflectance = color;
       for(int v = 0; v < 3; ++v) {
-          vertices[v].position = M * vertices[v].position;
+          if (i < lastIndex) vertices[v].position = M * vertices[v].position;
           vertices[v].material = basicShader;
       }
       DrawPolygon( screen, vertices, color);
@@ -250,10 +260,8 @@ void DrawPolygon(screen* screen, const vector<Vertex>& vertices, vec3 color )
   DrawRows(screen, leftPixels, rightPixels, color);
 }
 
-vec2 generateLensFlare() {
-  float scaleFactor = drand48();
-
-  vec4 newLightPos = lightPos - cameraPos;
+vec2 generateLensFlare(float scaleFactor) {
+  vec4 newLightPos = lightPos;
   int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
   int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
   vec2 light = vec2(lightX, lightY);
@@ -262,6 +270,18 @@ vec2 generateLensFlare() {
   vec2 drawPos = A * (scaleFactor + 1);
 
   return drawPos;
+}
+
+void getLensFlare(vector<vec2>& positions, vector<float>& scales){
+  int xDiff = focalLength * (cameraPos.x / cameraPos.z) + SCREEN_WIDTH / 2;
+  int yDiff = focalLength * (cameraPos.y / cameraPos.z) + SCREEN_HEIGHT / 2;
+  vec2 diff = vec2(xDiff, yDiff);
+  for (int i = 0; i < 3; i++){
+    vec2 centrePoint = generateLensFlare((i+1)*10) + diff;
+    positions[i] = centrePoint;
+    float scale = rand() % 2 + 1;
+    scales[i] = scale/100;
+  }
 }
 
 /*Place updates of parameters here*/
