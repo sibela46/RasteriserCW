@@ -42,7 +42,7 @@ void LoadLightModel(vector<Triangle>& model) {
       f = stoi(c.substr(0, c.find("/")));
 
       d--; e--; f--;
-      model.push_back(Triangle(temp_vertices[d], temp_vertices[e], temp_vertices[f], gray));
+      model.push_back(Triangle(temp_vertices[d], temp_vertices[e], temp_vertices[f], vec3(1, 1, 1)));
     } else {
       /* Ignoring any other line */
     }
