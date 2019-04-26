@@ -18,9 +18,9 @@ void LoadLightModel(vector<Triangle>& model) {
   int prevIndex = model.size();
   vector<vec4> temp_vertices;
   vector<int> elements;
-  vec3 gray( 0.75f, 0.75f, 0.75f );
+  vec3 yellow( 0.75f, 0.75f, 0.15f );
 
-  std::ifstream infile("lamp.obj");
+  std::ifstream infile("light.obj");
   if (!infile) {
     cerr << "Cannot open file" << endl; exit(1);
   }
@@ -42,7 +42,7 @@ void LoadLightModel(vector<Triangle>& model) {
       f = stoi(c.substr(0, c.find("/")));
 
       d--; e--; f--;
-      model.push_back(Triangle(temp_vertices[d], temp_vertices[e], temp_vertices[f], vec3(1, 1, 1)));
+      model.push_back(Triangle(temp_vertices[d], temp_vertices[e], temp_vertices[f], yellow));
     } else {
       /* Ignoring any other line */
     }
@@ -70,9 +70,9 @@ void LoadLightModel(vector<Triangle>& model) {
 		model[i].v1.w = 1.0;
 		model[i].v2.w = 1.0;
 
-    model[i].v0 -= vec4(0,-1,0,0);
-		model[i].v1 -= vec4(0,-1,0,0);
-		model[i].v2 -= vec4(0,-1,0,0);
+    model[i].v0 += vec4(-0.7,-1,0,0);
+		model[i].v1 += vec4(-0.7,-1,0,0);
+		model[i].v2 += vec4(-0.7,-1,0,0);
 
     model[i].ComputeNormal();
     model[i].ReverseNormal();

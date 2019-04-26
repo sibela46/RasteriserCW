@@ -88,29 +88,29 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec4 G(L,L,L,1);
 	vec4 H(0,L,L,1);
 
-	// Floor:
-	triangles.push_back( Triangle( C, B, A, blue ) );
-	triangles.push_back( Triangle( C, D, B, blue ) );
-
-	// Left wall
-	triangles.push_back( Triangle( A, E, C, white ) );
-	triangles.push_back( Triangle( C, E, G, white ) );
-
-	// Right wall
-	triangles.push_back( Triangle( F, B, D, white ) );
-	triangles.push_back( Triangle( H, F, D, white ) );
-
-	// Ceiling
-	triangles.push_back( Triangle( E, F, G, white ) );
-	triangles.push_back( Triangle( F, H, G, white ) );
-
-	// Back wall
-	triangles.push_back( Triangle( G, D, C, white ) );
-	triangles.push_back( Triangle( G, H, D, white ) );
+	// // Floor:
+	// triangles.push_back( Triangle( C, B, A, blue ) );
+	// triangles.push_back( Triangle( C, D, B, blue ) );
+	//
+	// // Left wall
+	// triangles.push_back( Triangle( A, E, C, white ) );
+	// triangles.push_back( Triangle( C, E, G, white ) );
+	//
+	// // Right wall
+	// triangles.push_back( Triangle( F, B, D, white ) );
+	// triangles.push_back( Triangle( H, F, D, white ) );
+	//
+	// // Ceiling
+	// triangles.push_back( Triangle( E, F, G, white ) );
+	// triangles.push_back( Triangle( F, H, G, white ) );
+	//
+	// // Back wall
+	// triangles.push_back( Triangle( G, D, C, white ) );
+	// triangles.push_back( Triangle( G, H, D, white ) );
 
 	// ---------------------------------------------------------------------------
 	// Short block
-	/*
+
 	A = vec4(290,0,114,1);
 	B = vec4(130,0, 65,1);
 	C = vec4(240,0,272,1);
@@ -174,7 +174,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	triangles.push_back( Triangle(G,F,E,blue) );
 	triangles.push_back( Triangle(G,H,F,blue) );
 
-	*/
+
 	// ----------------------------------------------
 	// Scale to the volume [-1,1]^3
 
