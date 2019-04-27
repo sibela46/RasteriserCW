@@ -22,7 +22,6 @@ void defineLights(vec4 averageLightPos, vector<Light>& lights) {
     lights[i].lightColour = lightYellow;
     lights[i].lightPower = 2.1f*lightYellow;
   }
-
 }
 
 #endif
