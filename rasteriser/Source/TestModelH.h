@@ -12,6 +12,9 @@
 #include <string>
 #include "RotationHandler.h"
 
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 720
+
 using namespace std;
 using glm::vec3;
 using glm::mat3;
@@ -28,9 +31,10 @@ public:
 	glm::vec4 v2;
 	glm::vec4 normal;
 	glm::vec3 color;
+	std::string object;
 
-	Triangle( glm::vec4 v0, glm::vec4 v1, glm::vec4 v2, glm::vec3 color )
-		: v0(v0), v1(v1), v2(v2), color(color)
+	Triangle( glm::vec4 v0, glm::vec4 v1, glm::vec4 v2, glm::vec3 color, std::string object )
+		: v0(v0), v1(v1), v2(v2), color(color), object(object)
 	{
 		ComputeNormal();
 	}
@@ -66,7 +70,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec3 yellow( 0.75f, 0.75f, 0.15f );
 	vec3 green(  0.15f, 0.75f, 0.15f );
 	vec3 cyan(   0.15f, 0.75f, 0.75f );
-	vec3 blue(   0.15f, 0.55f, 1.0f );
+	vec3 blue(   0.15f, 0.15f, 0.75f );
 	vec3 purple( 0.75f, 0.15f, 0.75f );
 	vec3 white(  0.75f, 0.75f, 0.75f );
 
@@ -88,29 +92,29 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec4 G(L,L,L,1);
 	vec4 H(0,L,L,1);
 
-	// // Floor:
-	// triangles.push_back( Triangle( C, B, A, blue ) );
-	// triangles.push_back( Triangle( C, D, B, blue ) );
-	//
-	// // Left wall
-	// triangles.push_back( Triangle( A, E, C, white ) );
-	// triangles.push_back( Triangle( C, E, G, white ) );
-	//
-	// // Right wall
-	// triangles.push_back( Triangle( F, B, D, white ) );
-	// triangles.push_back( Triangle( H, F, D, white ) );
-	//
-	// // Ceiling
-	// triangles.push_back( Triangle( E, F, G, white ) );
-	// triangles.push_back( Triangle( F, H, G, white ) );
-	//
-	// // Back wall
-	// triangles.push_back( Triangle( G, D, C, white ) );
-	// triangles.push_back( Triangle( G, H, D, white ) );
+	// Floor:
+	triangles.push_back( Triangle( C, B, A, green, "wall" ) );
+	triangles.push_back( Triangle( C, D, B, green, "wall" ) );
+
+	// Left wall
+	triangles.push_back( Triangle( A, E, C, purple, "wall" ) );
+	triangles.push_back( Triangle( C, E, G, purple, "wall" ) );
+
+	// Right wall
+	triangles.push_back( Triangle( F, B, D, yellow, "wall" ) );
+	triangles.push_back( Triangle( H, F, D, yellow, "wall" ) );
+
+	// Ceiling
+	triangles.push_back( Triangle( E, F, G, cyan, "wall" ) );
+	triangles.push_back( Triangle( F, H, G, cyan, "wall" ) );
+
+	// Back wall
+	triangles.push_back( Triangle( G, D, C, white, "wall" ) );
+	triangles.push_back( Triangle( G, H, D, white, "wall" ) );
 
 	// ---------------------------------------------------------------------------
 	// Short block
-
+	/*
 	A = vec4(290,0,114,1);
 	B = vec4(130,0, 65,1);
 	C = vec4(240,0,272,1);
@@ -174,7 +178,7 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	triangles.push_back( Triangle(G,F,E,blue) );
 	triangles.push_back( Triangle(G,H,F,blue) );
 
-
+	*/
 	// ----------------------------------------------
 	// Scale to the volume [-1,1]^3
 
@@ -225,7 +229,7 @@ void LoadBunnyModel( std::vector<Triangle>& model ) {
       float a, b, c;
       if (!(iss >> a >> b >> c)) { break; }
 
-      model.push_back(Triangle(temp_vertices[a-1], temp_vertices[b-1], temp_vertices[c-1], vec3(1, 1, 1)));
+      model.push_back(Triangle(temp_vertices[a-1], temp_vertices[b-1], temp_vertices[c-1], vec3(0.75, 0.75, 0.75), "bunny"));
 
     }
   }
@@ -233,7 +237,7 @@ void LoadBunnyModel( std::vector<Triangle>& model ) {
   // ----------------------------------------------
   // Scale to the volume [-1,1]^3
 	mat4 R;
-	RotationMatrixByAngle(0.0f, 90.0f, 0.0f, R);
+	RotationMatrixByAngle(0.0f, -35.0f, 0.0f, R);
 
   for( size_t i=prevIndex; i<model.size(); ++i )
   {
@@ -266,9 +270,9 @@ void LoadBunnyModel( std::vector<Triangle>& model ) {
 		model[i].v1.w = 1.0;
 		model[i].v2.w = 1.0;
 
-		model[i].v0 += vec4(0,0.6,0.1,0);
-		model[i].v1 += vec4(0,0.6,0.1,0);
-		model[i].v2 += vec4(0,0.6,0.1,0);
+		model[i].v0 += vec4(0.4,1,-0.3,0);
+		model[i].v1 += vec4(0.4,1,-0.3,0);
+		model[i].v2 += vec4(0.4,1,-0.3,0);
 
     model[i].ComputeNormal();
 		model[i].ReverseNormal();
