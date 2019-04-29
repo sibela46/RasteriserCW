@@ -24,15 +24,15 @@ struct Pixel {
   int y;
   float zinv;
   vec4 pos3d;
+  string object;
 };
 
 struct Vertex {
   vec4 position;
-  Material material;
+  string object;
 };
 
-Material basicShader = { vec3(1.0f, 0.5f, 0.31f), vec3(1.0f, 0.5f, 0.31f), vec3(0.5f, 0.5f, 0.5f), 32.0f };
-
+mat4 M;
 float xaw = 0.f;
 float yaw = 0.f;
 float zaw = 0.f;
@@ -40,12 +40,21 @@ vec4 prevCameraPos = vec4(0.f, 0.f, -2.5f, 1.f);
 vec4 cameraPos = vec4(0.f, 0.f, -2.5f, 1.f);
 float focalLength = SCREEN_HEIGHT/2;
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
+float shadowMap[SCREEN_HEIGHT][SCREEN_WIDTH];
+vec3 imageBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 /* Light source variables */
-vec4 lightPos(0, 0.1, -0.7, 1.0);
-vec3 lightPower = 14.1f*vec3( 1, 1, 1 ); //diffuse
-vec3 indirectLightPowerPerArea = 0.2f*vec3( 1, 1, 1 ); //ambient
+int lightsStartIndex = 0;
+vec3 indirectLightPowerPerArea = 0.7f*vec3( 1.f, 1.f, 1.f );
 vec4 currentNormal;
 vec3 currentReflectance;
+// Defines colors:
+vec3 red(    0.75f, 0.15f, 0.15f );
+vec3 yellow( 0.75f, 0.75f, 0.15f );
+vec3 green(  0.15f, 0.75f, 0.15f );
+vec3 cyan(   0.15f, 0.75f, 0.75f );
+vec3 blue(   0.15f, 0.15f, 0.75f );
+vec3 purple( 0.75f, 0.15f, 0.75f );
+vec3 white(  0.75f, 0.75f, 0.75f );
 
 
 #endif

@@ -11,7 +11,7 @@ GLMDIR=../glm
 EXEC=$(B_DIR)/$(FILE)
 
 # default build settings
-CC_OPTS=-c -pipe -Ofast -pg -Wno-switch -ggdb -g3
+CC_OPTS=-c -std=c++11 -pipe -Ofast -pg -Wno-switch -ggdb -g3
 LN_OPTS=
 CC=g++
 
@@ -34,7 +34,7 @@ OBJ = $(B_DIR)/$(FILE).o
 
 ########
 #   Objects
-$(B_DIR)/$(FILE).o : $(S_DIR)/$(FILE).cpp $(S_DIR)/SDLauxiliary.h $(S_DIR)/TestModelH.h $(S_DIR)/Aperture.h $(S_DIR)/Lightbulb.h $(S_DIR)/Sphere.h $(S_DIR)/Global.h
+$(B_DIR)/$(FILE).o : $(S_DIR)/$(FILE).cpp $(S_DIR)/SDLauxiliary.h $(S_DIR)/TestModelH.h $(S_DIR)/Aperture.h $(S_DIR)/Lightbulb.h $(S_DIR)/Lights.h $(S_DIR)/Global.h
 	 $(CC) $(CC_OPTS) -o $(B_DIR)/$(FILE).o $(S_DIR)/$(FILE).cpp $(SDL_CFLAGS) $(GLM_CFLAGS)
 
 
