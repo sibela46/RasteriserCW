@@ -65,7 +65,6 @@ int main( int argc, char* argv[] )
     averageLightPos += lightPositions[i];
   }
   averageLightPos /= lightSize;
-  cout << averageLightPos.x << " " << averageLightPos.y << " " << averageLightPos.z << endl;
 
   int lightsEndIndex = triangles.size();
   defineLights(averageLightPos, lights);
@@ -82,9 +81,13 @@ int main( int argc, char* argv[] )
     vector<Light> tempLights = getTempLights(lights);
 
     int lastIndex = triangles.size();
-    randomPositions.clear();
-    randomScales.clear();
+
     changeLensFlare(randomPositions, randomScales, tempLights);
+
+    // cout << randomScales.size() << endl;
+    // for (int i = 0; i < randomPositions.size(); i++){
+    //   cout << randomScales[i] << endl;
+    // }
 
     LoadApertureHexagon(triangles, randomPositions[0], randomScales[0], yellow);
     LoadApertureHexagon(triangles, randomPositions[1], randomScales[1], yellow);
@@ -95,19 +98,12 @@ int main( int argc, char* argv[] )
     LoadApertureHexagon(triangles, randomPositions[4], randomScales[4], purple);
     LoadApertureHexagon(triangles, randomPositions[5], randomScales[5], purple);
 
+    vec2 circlePoint = vec2(int(SCREEN_WIDTH/2 + randomPositions[2].x/5), int(SCREEN_HEIGHT/2 + randomPositions[2].y/5));
+
     Draw(screen, triangles, tempLights, lastIndex);
 
-    vec2 circlePoint = vec2(int(SCREEN_WIDTH/2 + randomPositions[2].x/5), int(SCREEN_HEIGHT/2 + randomPositions[2].y/5));
-    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
-    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
-
-    for (size_t i = 0; i < lightSize; i++) {
-        /* Correct the light's position wrt our camera */
-        int lightX = focalLength * (tempLights[i].lightPos.x / tempLights[i].lightPos.z) + SCREEN_WIDTH / 2;
-        int lightY = focalLength * (tempLights[i].lightPos.y / tempLights[i].lightPos.z) + SCREEN_HEIGHT / 2;
-
-        PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
-    }
+    // DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
+    // DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
 
     triangles.erase(triangles.begin() + lastIndex, triangles.end());
     SDL_Renderframe(screen);
@@ -343,6 +339,8 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<L
     newLightPos += lights[i].lightPos;
   }
   newLightPos /= lights.size();
+
+
   int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
   int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
   vec2 light = vec2(lightX, lightY);
@@ -350,10 +348,10 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<L
   vec2 A = centre - light;
 
   for (int i = 0; i < 5; i++){
-    vec2 centrePoint = A * float((i+1));
+    vec2 centrePoint = A * float((i+4)-drand48());
     positions[i] = centrePoint;
-    float scale = rand() % 2 + 1;
-    scales[i] = scale/100;
+    int scale = int(glm::distance(centre, centrePoint)) % 20;
+    scales[i] = float(scale)/1000;
   }
 }
 
@@ -363,16 +361,17 @@ void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vecto
     newLightPos += lights[i].lightPos;
   }
   newLightPos /= lights.size();
+
   int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
   int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
   vec2 light = vec2(lightX, lightY);
   vec2 centre = vec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
   vec2 A = centre - light;
 
-  for (int i = 0; i < positions.size(); i++){
-    positions[i] = A * float((i+1));
-    // scales[i] = rand() % 2 + int(fabs(cameraPos.z)) - 1;
-    // cout << scales[i] << endl;
+  for (int i = 0; i < 5; i++){
+    float scaleFactor = initialCameraPos.z - cameraPos.z;
+    int scale = int(glm::distance(centre, positions[i])) % 20;
+    scales[i] = float(scale)/1000 + scaleFactor/100;
   }
 }
 
