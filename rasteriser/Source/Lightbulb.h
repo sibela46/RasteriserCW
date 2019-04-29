@@ -69,9 +69,9 @@ void LoadLightModel(vector<Triangle>& model) {
 		model[i].v1.w = 1.0;
 		model[i].v2.w = 1.0;
 
-    model[i].v0 += vec4(-0.9,-0.9,1,0);
-		model[i].v1 += vec4(-0.9,-0.9,1,0);
-		model[i].v2 += vec4(-0.9,-0.9,1,0);
+    model[i].v0 += vec4(-0.8,-0.8,0.8,0);
+		model[i].v1 += vec4(-0.8,-0.8,0.8,0);
+		model[i].v2 += vec4(-0.8,-0.8,0.8,0);
 
     model[i].ComputeNormal();
     model[i].ReverseNormal();

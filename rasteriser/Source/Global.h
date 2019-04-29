@@ -32,6 +32,7 @@ struct Vertex {
   string object;
 };
 
+mat4 M;
 float xaw = 0.f;
 float yaw = 0.f;
 float zaw = 0.f;

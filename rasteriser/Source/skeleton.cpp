@@ -32,16 +32,16 @@ void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b, 
 void DrawPolygonEdges( screen* screen, const vector<Vertex>& vertices );
 void ComputePolygonRows( const vector<Pixel>& vertexPixels, vector<Pixel>& leftPixels, vector<Pixel>& rightPixels);
 void ComputeShadows( const vector<Vertex> vertices );
-void TransformationMatrix( glm::mat4x4& M );
+void RotationMatrix( glm::mat4x4& M );
 void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 shadow);
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights );
 void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, vec3 shadow );
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
+vector<Light> getTempLights(vector<Light> lights);
 
 int main( int argc, char* argv[] )
 {
-
   screen *screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT, FULLSCREEN_MODE );
 
   vector<Triangle> triangles;
@@ -56,7 +56,7 @@ int main( int argc, char* argv[] )
   for (size_t i = 0; i < lightSize; i++) {
     /* Correct the light's position wrt our camera */
     int randIndex = rand() % (triangles.size()) + lightsStartIndex;
-    vec4 toPush = triangles[randIndex].v0 - cameraPos;
+    vec4 toPush = triangles[randIndex].v0;
     lightPositions.push_back(toPush);
   }
 
@@ -65,49 +65,53 @@ int main( int argc, char* argv[] )
     averageLightPos += lightPositions[i];
   }
   averageLightPos /= lightSize;
+  cout << averageLightPos.x << " " << averageLightPos.y << " " << averageLightPos.z << endl;
 
   int lightsEndIndex = triangles.size();
-  // cout << averageLightPos.x << " " << averageLightPos.y << " " << averageLightPos.z << endl;
   defineLights(averageLightPos, lights);
 
-  LoadBunnyModel(triangles);
+  // LoadBunnyModel(triangles);
   vector<vec2> randomPositions(6);
   vector<float> randomScales(6);
-  getLensFlare(randomPositions, randomScales, lights);
+
+  vector<Light> tempLights = getTempLights(lights);
+  getLensFlare(randomPositions, randomScales, tempLights);
 
   while ( Update(lights))
   {
-      int lastIndex = triangles.size();
-      randomPositions.clear();
-      randomScales.clear();
-      changeLensFlare(randomPositions, randomScales, lights);
+    vector<Light> tempLights = getTempLights(lights);
 
-      LoadApertureHexagon(triangles, randomPositions[0], randomScales[0], yellow);
-      LoadApertureHexagon(triangles, randomPositions[1], randomScales[1], yellow);
+    int lastIndex = triangles.size();
+    randomPositions.clear();
+    randomScales.clear();
+    changeLensFlare(randomPositions, randomScales, tempLights);
 
-      LoadApertureHexagon(triangles, randomPositions[2], randomScales[2], cyan);
-      LoadApertureHexagon(triangles, randomPositions[3], randomScales[3], cyan);
+    LoadApertureHexagon(triangles, randomPositions[0], randomScales[0], yellow);
+    LoadApertureHexagon(triangles, randomPositions[1], randomScales[1], yellow);
 
-      LoadApertureHexagon(triangles, randomPositions[4], randomScales[4], purple);
-      LoadApertureHexagon(triangles, randomPositions[5], randomScales[5], purple);
+    LoadApertureHexagon(triangles, randomPositions[2], randomScales[2], cyan);
+    LoadApertureHexagon(triangles, randomPositions[3], randomScales[3], cyan);
 
-      Draw(screen, triangles, lights, lastIndex);
+    LoadApertureHexagon(triangles, randomPositions[4], randomScales[4], purple);
+    LoadApertureHexagon(triangles, randomPositions[5], randomScales[5], purple);
 
-      vec2 circlePoint = vec2(int(SCREEN_WIDTH/2 + randomPositions[2].x/5), int(SCREEN_HEIGHT/2 + randomPositions[2].y/5));
-      DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
-      DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
+    Draw(screen, triangles, tempLights, lastIndex);
 
-      for (size_t i = 0; i < lightSize; i++) {
+    vec2 circlePoint = vec2(int(SCREEN_WIDTH/2 + randomPositions[2].x/5), int(SCREEN_HEIGHT/2 + randomPositions[2].y/5));
+    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
+    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
+
+    for (size_t i = 0; i < lightSize; i++) {
         /* Correct the light's position wrt our camera */
-        int lightX = focalLength * (lights[i].lightPos.x / lights[i].lightPos.z) + SCREEN_WIDTH / 2;
-        int lightY = focalLength * (lights[i].lightPos.y / lights[i].lightPos.z) + SCREEN_HEIGHT / 2;
+        int lightX = focalLength * (tempLights[i].lightPos.x / tempLights[i].lightPos.z) + SCREEN_WIDTH / 2;
+        int lightY = focalLength * (tempLights[i].lightPos.y / tempLights[i].lightPos.z) + SCREEN_HEIGHT / 2;
 
         PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
-      }
-
-      triangles.erase(triangles.begin() + lastIndex, triangles.end());
-      SDL_Renderframe(screen);
     }
+
+    triangles.erase(triangles.begin() + lastIndex, triangles.end());
+    SDL_Renderframe(screen);
+  }
 
   SDL_SaveImage( screen, "screenshot.bmp" );
 
@@ -128,24 +132,6 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       shadowMap[y][x] = numeric_limits<int>::max();
     }
   }
-  /* Setup rotation matrix */
-  mat4 M;
-  TransformationMatrix(M);
-
-  // /* First pass is for computing the depth buffer */
-  // for (uint32_t i = 0; i < triangles.size(); i++) {
-  //   vector<Vertex> vertices(3);
-  //   vertices[0].position = triangles[i].v0;
-  //   vertices[1].position = triangles[i].v1;
-  //   vertices[2].position = triangles[i].v2;
-  //   currentNormal = triangles[i].normal;
-  //   for(int v = 0; v < 3; ++v) {
-  //     if (i < lastIndex) {
-  //       vertices[v].position = M * vertices[v].position;
-  //     }
-  //   }
-  //   ComputeShadows( vertices );
-  // }
 
   /* Second pass is for drawing the actual pixels */
   for( uint32_t i=0; i < triangles.size(); ++i ) {
@@ -156,21 +142,7 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       currentNormal = triangles[i].normal;
       currentReflectance = triangles[i].color;
       for (int v = 0; v < 3; ++v) {
-          if (i < lastIndex) vertices[v].position = M * vertices[v].position;
-          vertices[v].object = triangles[i].object;
-      }
-      DrawPolygon( screen, vertices, lights );
-  }
-  /* Second pass is for drawing the actual pixels */
-  for( uint32_t i=0; i < triangles.size(); ++i ) {
-      vector<Vertex> vertices(3);
-      vertices[0].position = triangles[i].v0;
-      vertices[1].position = triangles[i].v1;
-      vertices[2].position = triangles[i].v2;
-      currentNormal = triangles[i].normal;
-      currentReflectance = triangles[i].color;
-      for (int v = 0; v < 3; ++v) {
-          if (i < lastIndex) vertices[v].position = M * vertices[v].position;
+          if (i < lastIndex) vertices[v].position = vertices[v].position;
           vertices[v].object = triangles[i].object;
       }
       DrawPolygon( screen, vertices, lights );
@@ -193,7 +165,12 @@ void ComputeShadows( const vector<Vertex> vertices ) {
 }
 
 void VertexShader( const Vertex& vertex, Pixel& projPos ) {
-  vec4 temp = vertex.position - cameraPos; // * cam_rotation
+  mat4 M;
+  RotationMatrix(M);
+  vec4 temp = M * (vertex.position - cameraPos); // * cam_rotation
+
+  // cout << "temp: " << temp.x << " " << temp.y << " " << temp.z << endl;
+
   projPos.x = focalLength * (temp.x / temp.z) + SCREEN_WIDTH / 2;
   projPos.y = focalLength * (temp.y / temp.z) + SCREEN_HEIGHT / 2;
   projPos.zinv = focalLength * (1 / (temp.z));
@@ -399,17 +376,16 @@ void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vecto
   }
 }
 
-void changeLights(float dx, float dz, vector<Light>& lights){
+vector<Light> getTempLights(vector<Light> lights){
+  mat4 M;
+  RotationMatrix(M);
+  vector<Light> tempLights(lights.size());
   for (int i = 0; i < lights.size(); i++){
-    lights[i].lightPos.x += dx;
-    lights[i].lightPos.z += dz;
+    tempLights[i].lightPos = M * (lights[i].lightPos - cameraPos);
+    tempLights[i].lightColour = lights[i].lightColour;
+    tempLights[i].lightPower = lights[i].lightPower;
   }
-}
-
-void rotateLights(mat4 M, vector<Light>& lights){
-  for (int i = 0; i < lights.size(); i++){
-    lights[i].lightPos = M * lights[i].lightPos;
-  }
+  return tempLights;
 }
 
 /*Place updates of parameters here*/
@@ -422,7 +398,6 @@ bool Update(vector<Light>& lights)
   t = t2;
   /*Good idea to remove this*/
   // std::cout << "Render time: " << dt << " ms." << std::endl;
-  mat4 M;
 
     SDL_Event e;
     while(SDL_PollEvent(&e))
@@ -439,60 +414,36 @@ bool Update(vector<Light>& lights)
           case SDLK_UP:
             /* Move camera forwards */
             cameraPos.z += 0.1f;
-            changeLights(0.f, -0.1f, lights);
             break;
           case SDLK_DOWN:
             /* Move camera backwards */
             cameraPos.z -= 0.1f;
-            changeLights(0.f, 0.1f, lights);
             break;
           case SDLK_LEFT:
             /* Move camera left */
             cameraPos.x -= 0.1f;
-            changeLights(0.1f, 0.f, lights);
             break;
           case SDLK_RIGHT:
             /* Move camera right */
             cameraPos.x += 0.1f;
-            changeLights(-0.1f, 0.f, lights);
             break;
-          // case SDLK_1:
-          //   lights[0].lightPos.x -= 0.1f;
-          //   break;
-          // case SDLK_2:
-          //   lights[0].lightPos.x += 0.1f;
-          //   break;
-          // case SDLK_3:
-          //   lights[0].lightPos.y -= 0.1f;
-          //   break;
-          // case SDLK_4:
-          //   lights[0].lightPos.y += 0.1f;
-          //   break;
-          // case SDLK_5:
-          //   lights[0].lightPos.z -= 0.1f;
-          //   break;
-          // case SDLK_6:
-          //   lights[0].lightPos.z += 0.1f;
-          //   break;
           case SDLK_w:
             xaw -= 0.1f;
-            TransformationMatrix(M);
-            rotateLights(glm::inverse(M), lights);
             break;
           case SDLK_s:
             xaw += 0.1f;
-            TransformationMatrix(M);
-            rotateLights(glm::inverse(M), lights);
             break;
           case SDLK_a:
             yaw += 0.1f;
-            TransformationMatrix(M);
-            rotateLights(glm::inverse(M), lights);
             break;
           case SDLK_d:
             yaw -= 0.1f;
-            TransformationMatrix(M);
-            rotateLights(glm::inverse(M), lights);
+            break;
+          case SDLK_e:
+            zaw += 0.1f;
+            break;
+          case SDLK_q:
+            zaw -= 0.1f;
             break;
           case SDLK_ESCAPE:
             /* Move camera quit */
@@ -504,20 +455,10 @@ bool Update(vector<Light>& lights)
   return true;
 }
 
-void TransformationMatrix(mat4& M) {
-  mat4 C( 0.f, 0.f, 0.f, cameraPos.x,
-          0.f, 0.f, 0.f, cameraPos.y,
-          0.f, 0.f, 0.f, cameraPos.z,
-          0.f, 0.f, 0.f, 1.f);
-  mat4 NC( 0.f, 0.f, 0.f, -cameraPos.x,
-          0.f, 0.f, 0.f, -cameraPos.y,
-          0.f, 0.f, 0.f, -cameraPos.z,
-          0.f, 0.f, 0.f, 1.f);
-
+void RotationMatrix(mat4& M) {
   mat4 R ( cos(yaw)*cos(zaw), -cos(yaw)*sin(zaw) + sin(xaw)*sin(yaw)*cos(zaw), sin(xaw)*sin(zaw) + cos(xaw)*sin(yaw)*cos(zaw), 0,
-      cos(yaw)*sin(zaw), cos(xaw)*cos(zaw) + sin(xaw)*sin(yaw)*sin(zaw), -sin(xaw)*cos(zaw) + cos(xaw)*sin(yaw)*sin(zaw), 0,
-      -sin(yaw)        , sin(xaw)*cos(yaw)                              , cos(xaw)*cos(yaw)                             , 0,
-      0                , 0                                              , 0                                             , 1);
-
+          cos(yaw)*sin(zaw), cos(xaw)*cos(zaw) + sin(xaw)*sin(yaw)*sin(zaw), -sin(xaw)*cos(zaw) + cos(xaw)*sin(yaw)*sin(zaw), 0,
+          -sin(yaw)        , sin(xaw)*cos(yaw)                              , cos(xaw)*cos(yaw)                             , 0,
+          0                , 0                                              , 0                                             , 1);
   M = R;
 }
