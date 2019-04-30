@@ -39,6 +39,7 @@ void ComputeImageBuffer( const vector<Light> lights, const Pixel& pixel );
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& colours, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 vector<Light> getTempLights(vector<Light> lights);
+bool lineClip(vec2& start, vec2& end);
 
 int main( int argc, char* argv[] )
 {
@@ -166,9 +167,9 @@ void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastInde
   vec4 temp;
   if (index < lastIndex) temp = M * (vertex.position - cameraPos); // * cam_rotation
   else {
-    cout << vertex.object << endl;
+    // cout << vertex.object << endl;
     temp = vertex.position;
-    cout << temp.z << endl;
+    // cout << temp.z << endl;
   }
 
   // cout << "temp: " << temp.x << " " << temp.y << " " << temp.z << endl;
@@ -243,22 +244,34 @@ void Interpolate( Pixel a, Pixel b, vector<Pixel>& result ) {
 }
 
 void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b ) {
-  int pixels = glm::max( abs(a.x - b.x), abs(a.y - b.y) ) + 1;
-  vector<Pixel> line( pixels );
-  Interpolate( a, b, line );
+  vec2 start = vec2(a.x, a.y);
+  vec2 end = vec2(b.x, b.y);
+  bool accept = lineClip(start, end);
 
-  if (pass == 0) {
-    for (int i = 0; i < pixels; i++) {
-      line[i].object = a.object;
-      ComputeImageBuffer(lights, line[i]);
-    }
-  } else {
-    for (int i = 0; i < pixels; i++) {
-      line[i].object = a.object;
-      bool edge = (i == 0 || i == (pixels-1));
-      PixelShader(screen, lights, line[i], edge);
+  if (accept){
+    a.x = start.x;
+    a.y = start.y;
+    b.x = end.x;
+    b.y = end.y;
+
+    int pixels = glm::max( abs(a.x - b.x), abs(a.y - b.y) ) + 1;
+    vector<Pixel> line( pixels );
+    Interpolate( a, b, line );
+
+    if (pass == 0) {
+      for (int i = 0; i < pixels; i++) {
+        line[i].object = a.object;
+        ComputeImageBuffer(lights, line[i]);
+      }
+    } else {
+      for (int i = 0; i < pixels; i++) {
+        line[i].object = a.object;
+        bool edge = (i == 0 || i == (pixels-1));
+        PixelShader(screen, lights, line[i], edge);
+      }
     }
   }
+
 }
 
 /* Setup the two arrays for start and end position of each row */
@@ -413,13 +426,52 @@ vector<Light> getTempLights(vector<Light> lights){
 int computeOutcode(vec2 pos){
   int code = INSIDE;
 
-  if (pos.x < 0) code |= LEFT;
-  else if (pos.x > SCREEN_WIDTH) code |= RIGHT;
+  if (pos.x < xmin) code |= LEFT;
+  else if (pos.x > xmax) code |= RIGHT;
 
-  if (pos.y < 0) code |= BOTTOM;
-  else if (pos.y > SCREEN_HEIGHT) code |= TOP;
+  if (pos.y < ymin) code |= BOTTOM;
+  else if (pos.y > ymax) code |= TOP;
 
   return code;
+}
+
+// Returns true when line should be drawn between points, false otherwise
+bool lineClip(vec2& start, vec2& end){
+  int outcodeStart = computeOutcode(start);
+  int outcodeEnd = computeOutcode(end);
+
+  while(true) {
+    if (!(outcodeStart | outcodeEnd)) return true;
+
+    else if (outcodeStart & outcodeEnd) return false;
+
+    else {
+      int outsideCode = outcodeStart ? outcodeStart : outcodeEnd;
+
+      vec2 tempPos;
+      if (outsideCode & TOP){
+        tempPos = vec2(ymax, start.x + (end.x - start.x) * (ymax - start.y) / (end.y - start.y));
+      }
+      else if (outsideCode & BOTTOM){
+        tempPos = vec2(ymin, start.x + (end.x - start.x) * (ymax - start.y) / (end.y - start.y));
+      }
+      else if (outsideCode & RIGHT){
+        tempPos = vec2(xmax, start.y + (end.y - start.y) * (xmax - start.x) / (end.x - start.x));
+      }
+      else if (outsideCode & LEFT){
+        tempPos = vec2(xmin, start.y + (end.y - start.y) * (xmax - start.x) / (end.x - start.x));
+      }
+
+      if (outsideCode == outcodeStart){
+        start = tempPos;
+        outcodeStart = computeOutcode(start);
+      }
+      else {
+        end = tempPos;
+        outcodeEnd = computeOutcode(end);
+      }
+    }
+  }
 }
 
 /*Place updates of parameters here*/

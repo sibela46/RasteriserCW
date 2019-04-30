@@ -51,6 +51,10 @@ const int LEFT = 1;   // 0001
 const int RIGHT = 2;  // 0010
 const int BOTTOM = 4; // 0100
 const int TOP = 8;    // 1000
+const int xmin = 0;
+const int xmax = SCREEN_WIDTH-1;
+const int ymin = 0;
+const int ymax = SCREEN_HEIGHT-1;
 
 /* Light source variables */
 int lightsStartIndex = 0;
