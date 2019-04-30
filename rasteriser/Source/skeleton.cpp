@@ -25,16 +25,16 @@ using glm::ivec2;
 
 bool Update(vector<Light>& lights);
 void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights, int lastIndex );
-void VertexShader( const Vertex& vertices, Pixel& projPos );
+void VertexShader( const Vertex& vertices, Pixel& projPos, int index, int lastIndex );
 void VertexShaderLight( const Vertex& vertex, Pixel& projPos );
 void Interpolate( Pixel a, Pixel b, vector<Pixel>& result );
 void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b, vec3 shadow );
-void DrawPolygonEdges( screen* screen, const vector<Vertex>& vertices );
+// void DrawPolygonEdges( screen* screen, const vector<Vertex>& vertices );
 void ComputePolygonRows( const vector<Pixel>& vertexPixels, vector<Pixel>& leftPixels, vector<Pixel>& rightPixels);
-void ComputeShadows( const vector<Vertex> vertices );
+// void ComputeShadows( const vector<Vertex> vertices );
 void RotationMatrix( glm::mat4x4& M );
 void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 shadow);
-void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights );
+void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex );
 void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, vec3 shadow );
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
@@ -65,7 +65,6 @@ int main( int argc, char* argv[] )
     averageLightPos += lightPositions[i];
   }
   averageLightPos /= lightSize;
-  cout << averageLightPos.x << " " << averageLightPos.y << " " << averageLightPos.z << endl;
 
   int lightsEndIndex = triangles.size();
   defineLights(averageLightPos, lights);
@@ -82,8 +81,7 @@ int main( int argc, char* argv[] )
     vector<Light> tempLights = getTempLights(lights);
 
     int lastIndex = triangles.size();
-    randomPositions.clear();
-    randomScales.clear();
+
     changeLensFlare(randomPositions, randomScales, tempLights);
 
     LoadApertureHexagon(triangles, randomPositions[0], randomScales[0], yellow);
@@ -95,19 +93,17 @@ int main( int argc, char* argv[] )
     LoadApertureHexagon(triangles, randomPositions[4], randomScales[4], purple);
     LoadApertureHexagon(triangles, randomPositions[5], randomScales[5], purple);
 
+    for (int i = lastIndex; i < triangles.size(); i++){
+      triangles[i].v0 -= cameraPos;
+      triangles[i].v1 -= cameraPos;
+      triangles[i].v2 -= cameraPos;
+    }
+
     Draw(screen, triangles, tempLights, lastIndex);
 
     vec2 circlePoint = vec2(int(SCREEN_WIDTH/2 + randomPositions[2].x/5), int(SCREEN_HEIGHT/2 + randomPositions[2].y/5));
-    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
-    DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
-
-    for (size_t i = 0; i < lightSize; i++) {
-        /* Correct the light's position wrt our camera */
-        int lightX = focalLength * (tempLights[i].lightPos.x / tempLights[i].lightPos.z) + SCREEN_WIDTH / 2;
-        int lightY = focalLength * (tempLights[i].lightPos.y / tempLights[i].lightPos.z) + SCREEN_HEIGHT / 2;
-
-        PutPixelSDL(screen, lightX, lightY, vec3(1, 0, 0));
-    }
+    // DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[2]*800, cyan);
+    // DrawCircle(screen, circlePoint.x, circlePoint.y, randomScales[3]*800, cyan);
 
     triangles.erase(triangles.begin() + lastIndex, triangles.end());
     SDL_Renderframe(screen);
@@ -142,32 +138,33 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       currentNormal = triangles[i].normal;
       currentReflectance = triangles[i].color;
       for (int v = 0; v < 3; ++v) {
-          if (i < lastIndex) vertices[v].position = vertices[v].position;
           vertices[v].object = triangles[i].object;
       }
-      DrawPolygon( screen, vertices, lights );
+      DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
 }
 
-/* Compute shadow given light source */
-void ComputeShadows( const vector<Vertex> vertices ) {
-  int V = vertices.size();
-  vector<Pixel> vertexPixels( V );
-  for( int i=0; i<V; ++i ){
-    VertexShader( vertices[i], vertexPixels[i] );
-    int x = vertexPixels[i].x;
-    int y = vertexPixels[i].y;
+// /* Compute shadow given light source */
+// void ComputeShadows( const vector<Vertex> vertices ) {
+//   int V = vertices.size();
+//   vector<Pixel> vertexPixels( V );
+//   for( int i=0; i<V; ++i ){
+//     VertexShader( vertices[i], vertexPixels[i] );
+//     int x = vertexPixels[i].x;
+//     int y = vertexPixels[i].y;
+//
+//     if (vertexPixels[i].zinv < shadowMap[y][x]) {
+//       shadowMap[y][x] = vertexPixels[i].zinv;
+//     }
+//   }
+// }
 
-    if (vertexPixels[i].zinv < shadowMap[y][x]) {
-      shadowMap[y][x] = vertexPixels[i].zinv;
-    }
-  }
-}
-
-void VertexShader( const Vertex& vertex, Pixel& projPos ) {
+void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastIndex ) {
   mat4 M;
   RotationMatrix(M);
-  vec4 temp = M * (vertex.position - cameraPos); // * cam_rotation
+  vec4 temp;
+  if (index < lastIndex) temp = M * (vertex.position - cameraPos); // * cam_rotation
+  else temp = vertex.position;
 
   // cout << "temp: " << temp.x << " " << temp.y << " " << temp.z << endl;
 
@@ -314,13 +311,13 @@ void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& l
   }
 }
 
-void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights )
+void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex )
 {
   int V = vertices.size();
   vector<Pixel> vertexPixels( V );
   vec3 shadow = vec3(1, 1, 1);
   for( int i=0; i<V; ++i ) {
-    VertexShader( vertices[i], vertexPixels[i] );
+    VertexShader( vertices[i], vertexPixels[i], index, lastIndex );
     int x = vertexPixels[i].x;
     int y = vertexPixels[i].y;
     if (vertexPixels[i].zinv > shadowMap[y][x]) {
@@ -343,6 +340,8 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<L
     newLightPos += lights[i].lightPos;
   }
   newLightPos /= lights.size();
+
+
   int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
   int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
   vec2 light = vec2(lightX, lightY);
@@ -350,10 +349,10 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<L
   vec2 A = centre - light;
 
   for (int i = 0; i < 5; i++){
-    vec2 centrePoint = A * float((i+1));
+    vec2 centrePoint = A * float((i+4)-drand48());
     positions[i] = centrePoint;
-    float scale = rand() % 2 + 1;
-    scales[i] = scale/100;
+    int scale = int(glm::distance(centre, centrePoint)) % 20;
+    scales[i] = float(scale)/1000;
   }
 }
 
@@ -363,16 +362,17 @@ void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vecto
     newLightPos += lights[i].lightPos;
   }
   newLightPos /= lights.size();
+
   int lightX = focalLength * (newLightPos.x / newLightPos.z) + SCREEN_WIDTH / 2;
   int lightY = focalLength * (newLightPos.y / newLightPos.z) + SCREEN_HEIGHT / 2;
   vec2 light = vec2(lightX, lightY);
   vec2 centre = vec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
   vec2 A = centre - light;
 
-  for (int i = 0; i < positions.size(); i++){
-    positions[i] = A * float((i+1));
-    // scales[i] = rand() % 2 + int(fabs(cameraPos.z)) - 1;
-    // cout << scales[i] << endl;
+  for (int i = 0; i < 5; i++){
+    float scaleFactor = initialCameraPos.z - cameraPos.z;
+    int scale = int(glm::distance(centre, positions[i])) % 20;
+    scales[i] = float(scale)/1000 + scaleFactor/100;
   }
 }
 
