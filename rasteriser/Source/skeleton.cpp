@@ -36,7 +36,7 @@ void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& l
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex );
 void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, bool edge );
 void ComputeImageBuffer( const vector<Light> lights, const Pixel& pixel );
-void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3> colours, const vector<Light> lights);
+void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& colours, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 vector<Light> getTempLights(vector<Light> lights);
 
@@ -70,7 +70,7 @@ int main( int argc, char* argv[] )
   int lightsEndIndex = triangles.size();
   defineLights(averageLightPos, lights);
 
-  // LoadBunnyModel(triangles);
+  LoadBunnyModel(triangles);
   vector<vec2> randomPositions(numOfHexagons);
   vector<float> randomScales(numOfHexagons);
   vector<vec3> colours(numOfHexagons);
@@ -88,15 +88,13 @@ int main( int argc, char* argv[] )
 
     for (int i = 0; i < randomPositions.size(); i++){
       int colour = rand() % 3;
-      if (colour == 0) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
-      else if (colour == 1) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
-      else if (colour == 2) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
+      LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
     }
 
     for (int i = lastIndex; i < triangles.size(); i++){
-      triangles[i].v0 -= cameraPos;
-      triangles[i].v1 -= cameraPos;
-      triangles[i].v2 -= cameraPos;
+      triangles[i].v0 -= initialCameraPos;
+      triangles[i].v1 -= initialCameraPos;
+      triangles[i].v2 -= initialCameraPos;
     }
 
     Draw(screen, triangles, tempLights, lastIndex);
@@ -167,7 +165,11 @@ void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastInde
   RotationMatrix(M);
   vec4 temp;
   if (index < lastIndex) temp = M * (vertex.position - cameraPos); // * cam_rotation
-  else temp = vertex.position;
+  else {
+    cout << vertex.object << endl;
+    temp = vertex.position;
+    cout << temp.z << endl;
+  }
 
   // cout << "temp: " << temp.x << " " << temp.y << " " << temp.z << endl;
 
@@ -213,7 +215,7 @@ void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel
     vec3 averageColour = (imageBuffer[y][x-1] + imageBuffer[y][x] + imageBuffer[y][x+1])/3.f;
     PutPixelSDL(screen, x, y, (edge) ? averageColour : imageBuffer[y][x]);
   } else if (pixel.object == "ghost") {
-    PutPixelSDL(screen, x, y, imageBuffer[y][x] + currentReflectance*indirectLightPowerPerArea*vec3(0.2,0.2,0.2));
+    PutPixelSDL(screen, x, y, imageBuffer[y][x] + currentReflectance*1.5f*indirectLightPowerPerArea*vec3(0.2,0.2,0.2));
   }
 
 }
@@ -361,7 +363,7 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& 
   vec2 A = centre - light;
 
   for (int i = 0; i < positions.size(); i++){
-    vec2 centrePoint = A * float((i%8) + 1 - drand48());
+    vec2 centrePoint = A * float((i%5) + 1 - drand48());
     positions[i] = centrePoint;
     int scale = int(glm::distance(centre, centrePoint)) % 20;
     scales[i] = float(scale)/1000;
@@ -386,10 +388,10 @@ void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vecto
   vec2 centre = vec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
   vec2 A = centre - light;
 
-  for (int i = 0; i < 5; i++){
+  for (int i = 0; i < positions.size(); i++){
     float scaleFactor = initialCameraPos.z - cameraPos.z;
     int scale = int(glm::distance(centre, positions[i])) % 20;
-    scales[i] = float(scale)/1000 + scaleFactor/100;
+    scales[i] = float(scale)/1000 + scaleFactor/200;
   }
 }
 
@@ -403,6 +405,21 @@ vector<Light> getTempLights(vector<Light> lights){
     tempLights[i].lightPower = lights[i].lightPower;
   }
   return tempLights;
+}
+
+// CLIPPING
+
+// Assumes the 2D projected coordinate was passed in
+int computeOutcode(vec2 pos){
+  int code = INSIDE;
+
+  if (pos.x < 0) code |= LEFT;
+  else if (pos.x > SCREEN_WIDTH) code |= RIGHT;
+
+  if (pos.y < 0) code |= BOTTOM;
+  else if (pos.y > SCREEN_HEIGHT) code |= TOP;
+
+  return code;
 }
 
 /*Place updates of parameters here*/

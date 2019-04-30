@@ -44,12 +44,21 @@ float focalLength = SCREEN_HEIGHT/2;
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 float shadowMap[SCREEN_HEIGHT][SCREEN_WIDTH];
 vec3 imageBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
+
+// Clipping variables
+const int INSIDE = 0; // 0000
+const int LEFT = 1;   // 0001
+const int RIGHT = 2;  // 0010
+const int BOTTOM = 4; // 0100
+const int TOP = 8;    // 1000
+
 /* Light source variables */
 int lightsStartIndex = 0;
 int numOfHexagons = 12;
 vec3 indirectLightPowerPerArea = 0.7f*vec3( 1.f, 1.f, 1.f );
 vec4 currentNormal;
 vec3 currentReflectance;
+
 // Defines colors:
 vec3 red(    0.75f, 0.15f, 0.15f );
 vec3 yellow( 0.75f, 0.75f, 0.15f );
