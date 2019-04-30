@@ -36,6 +36,7 @@ mat4 M;
 float xaw = 0.f;
 float yaw = 0.f;
 float zaw = 0.f;
+int pass = 0;
 vec4 prevCameraPos = vec4(0.f, 0.f, -2.5f, 1.f);
 vec4 cameraPos = vec4(0.f, 0.f, -2.5f, 1.f);
 const vec4 initialCameraPos = cameraPos;

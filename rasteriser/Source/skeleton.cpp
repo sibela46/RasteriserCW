@@ -28,14 +28,14 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
 void VertexShader( const Vertex& vertices, Pixel& projPos, int index, int lastIndex );
 void VertexShaderLight( const Vertex& vertex, Pixel& projPos );
 void Interpolate( Pixel a, Pixel b, vector<Pixel>& result );
-void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b, vec3 shadow );
+void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b );
 // void DrawPolygonEdges( screen* screen, const vector<Vertex>& vertices );
 void ComputePolygonRows( const vector<Pixel>& vertexPixels, vector<Pixel>& leftPixels, vector<Pixel>& rightPixels);
-// void ComputeShadows( const vector<Vertex> vertices );
 void RotationMatrix( glm::mat4x4& M );
-void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 shadow);
+void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels);
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex );
-void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, vec3 shadow );
+void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, bool edge );
+void ComputeImageBuffer( const vector<Light> lights, const Pixel& pixel );
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 vector<Light> getTempLights(vector<Light> lights);
@@ -129,6 +129,22 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
     }
   }
 
+  /* First pass is for computing the image buffer */
+  for( uint32_t i=0; i < triangles.size(); ++i ) {
+      vector<Vertex> vertices(3);
+      vertices[0].position = triangles[i].v0;
+      vertices[1].position = triangles[i].v1;
+      vertices[2].position = triangles[i].v2;
+      currentNormal = triangles[i].normal;
+      currentReflectance = triangles[i].color;
+      for (int v = 0; v < 3; ++v) {
+          vertices[v].object = triangles[i].object;
+      }
+      DrawPolygon( screen, vertices, lights, i, lastIndex );
+  }
+
+  pass++;
+
   /* Second pass is for drawing the actual pixels */
   for( uint32_t i=0; i < triangles.size(); ++i ) {
       vector<Vertex> vertices(3);
@@ -142,22 +158,9 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       }
       DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
-}
 
-// /* Compute shadow given light source */
-// void ComputeShadows( const vector<Vertex> vertices ) {
-//   int V = vertices.size();
-//   vector<Pixel> vertexPixels( V );
-//   for( int i=0; i<V; ++i ){
-//     VertexShader( vertices[i], vertexPixels[i] );
-//     int x = vertexPixels[i].x;
-//     int y = vertexPixels[i].y;
-//
-//     if (vertexPixels[i].zinv < shadowMap[y][x]) {
-//       shadowMap[y][x] = vertexPixels[i].zinv;
-//     }
-//   }
-// }
+  pass--;
+}
 
 void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastIndex ) {
   mat4 M;
@@ -175,42 +178,43 @@ void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastInde
   projPos.object = vertex.object;
 }
 
+void ComputeImageBuffer( const vector<Light> lights, const Pixel& pixel ) {
+  int x = pixel.x;
+  int y = pixel.y;
+  vec3 R = vec3(0, 0, 0);
 
-void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, vec3 shadow ) {
-    int x = pixel.x;
-    int y = pixel.y;
-    vec3 R = vec3(0, 0, 0);
+  /* Compute illumination */
+  for (size_t i = 0; i < lights.size(); i++) {
+    float r = glm::distance(pixel.pos3d, lights[i].lightPos);
+    float A = 4 * M_PI * r * r;
+    vec4 r_hat = glm::normalize(lights[i].lightPos - pixel.pos3d);
+    vec4 n = currentNormal;
+    vec3 p = currentReflectance;
+    vec3 P = lights[i].lightPower / A;
+    vec3 D = P * std::max(glm::dot(n, r_hat), 0.0f);
+    vec3 diffuse = p * D;
 
-    /* Compute illumination */
-    for (size_t i = 0; i < lights.size(); i++) {
-      float r = glm::distance(pixel.pos3d, lights[i].lightPos);
-      float A = 4 * M_PI * r * r;
-      vec4 r_hat = glm::normalize(lights[i].lightPos - pixel.pos3d);
-      vec4 n = currentNormal;
-      vec3 p = currentReflectance;
-      vec3 P = lights[i].lightPower / A;
-      vec3 D = P * std::max(glm::dot(n, r_hat), 0.0f);
-      vec3 diffuse = p * D;
+    R += diffuse;
+  }
 
-      R += diffuse;
+  if ( pixel.zinv > depthBuffer[y][x] ) {
+    depthBuffer[y][x] = pixel.zinv;
+    if (pixel.object != "light" && pixel.object != "ghost") {
+      imageBuffer[y][x] = R + currentReflectance*indirectLightPowerPerArea;
     }
+  }
+}
 
-    vec3 green(  0.15f, 0.75f, 0.15f );
-  	vec3 blue(   0.15f, 0.55f, 1.0f );
-  	vec3 yellow( 0.75f, 0.75f, 0.15f );
+void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, bool edge ) {
+  int x = pixel.x;
+  int y = pixel.y;
 
-    if ( pixel.zinv > depthBuffer[y][x] ) {
-      depthBuffer[y][x] = pixel.zinv;
-      if (pixel.object != "light") {
-        PutPixelSDL( screen, x, y, R + currentReflectance*indirectLightPowerPerArea);
-      }
-      if (pixel.object != "ghost") {
-        imageBuffer[y][x] = R + currentReflectance*indirectLightPowerPerArea;
-      }
-      if (pixel.object == "ghost") {
-        PutPixelSDL( screen, x, y, imageBuffer[y][x] + currentReflectance*vec3(0.2,0.2,0.2));
-      }
-    }
+  if (pixel.object != "light" && pixel.object != "ghost") {
+    vec3 averageColour = (imageBuffer[y][x-1] + imageBuffer[y][x] + imageBuffer[y][x+1])/3.f;
+    PutPixelSDL(screen, x, y, (edge) ? averageColour : imageBuffer[y][x]);
+  } else if (pixel.object == "ghost") {
+    PutPixelSDL(screen, x, y, imageBuffer[y][x] + currentReflectance*indirectLightPowerPerArea*vec3(0.2,0.2,0.2));
+  }
 
 }
 
@@ -236,14 +240,22 @@ void Interpolate( Pixel a, Pixel b, vector<Pixel>& result ) {
   }
 }
 
-void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b, vec3 shadow ) {
+void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b ) {
   int pixels = glm::max( abs(a.x - b.x), abs(a.y - b.y) ) + 1;
   vector<Pixel> line( pixels );
   Interpolate( a, b, line );
 
-  for (int i = 0; i < pixels; i++) {
-    line[i].object = a.object;
-    PixelShader(screen, lights, line[i], shadow);
+  if (pass == 0) {
+    for (int i = 0; i < pixels; i++) {
+      line[i].object = a.object;
+      ComputeImageBuffer(lights, line[i]);
+    }
+  } else {
+    for (int i = 0; i < pixels; i++) {
+      line[i].object = a.object;
+      bool edge = (i == 0 || i == (pixels-1));
+      PixelShader(screen, lights, line[i], edge);
+    }
   }
 }
 
@@ -305,9 +317,9 @@ void ComputePolygonRows( const vector<Pixel>& vertexPixels, vector<Pixel>& leftP
   }
 }
 
-void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels, vec3 shadow){
+void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& leftPixels, const vector<Pixel>& rightPixels){
   for (int i = 0; i < leftPixels.size(); i++){
-    DrawLineSDL(screen, lights, leftPixels[i], rightPixels[i], shadow);
+    DrawLineSDL(screen, lights, leftPixels[i], rightPixels[i]);
   }
 }
 
@@ -331,7 +343,7 @@ void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Li
     leftPixels[i].object = vertexPixels[0].object;
     rightPixels[i].object = vertexPixels[0].object;
   }
-  DrawRows(screen, lights, leftPixels, rightPixels, shadow);
+  DrawRows(screen, lights, leftPixels, rightPixels);
 }
 
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights){
