@@ -46,6 +46,7 @@ float shadowMap[SCREEN_HEIGHT][SCREEN_WIDTH];
 vec3 imageBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 /* Light source variables */
 int lightsStartIndex = 0;
+int numOfHexagons = 12;
 vec3 indirectLightPowerPerArea = 0.7f*vec3( 1.f, 1.f, 1.f );
 vec4 currentNormal;
 vec3 currentReflectance;

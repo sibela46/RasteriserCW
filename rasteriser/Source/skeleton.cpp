@@ -36,12 +36,13 @@ void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& l
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex );
 void PixelShader( screen* screen, const vector<Light> lights, const Pixel& pixel, bool edge );
 void ComputeImageBuffer( const vector<Light> lights, const Pixel& pixel );
-void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
+void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3> colours, const vector<Light> lights);
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 vector<Light> getTempLights(vector<Light> lights);
 
 int main( int argc, char* argv[] )
 {
+  srand(time(NULL));
   screen *screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT, FULLSCREEN_MODE );
 
   vector<Triangle> triangles;
@@ -70,11 +71,12 @@ int main( int argc, char* argv[] )
   defineLights(averageLightPos, lights);
 
   // LoadBunnyModel(triangles);
-  vector<vec2> randomPositions(6);
-  vector<float> randomScales(6);
+  vector<vec2> randomPositions(numOfHexagons);
+  vector<float> randomScales(numOfHexagons);
+  vector<vec3> colours(numOfHexagons);
 
   vector<Light> tempLights = getTempLights(lights);
-  getLensFlare(randomPositions, randomScales, tempLights);
+  getLensFlare(randomPositions, randomScales, colours, tempLights);
 
   while ( Update(lights))
   {
@@ -84,14 +86,12 @@ int main( int argc, char* argv[] )
 
     changeLensFlare(randomPositions, randomScales, tempLights);
 
-    LoadApertureHexagon(triangles, randomPositions[0], randomScales[0], yellow);
-    LoadApertureHexagon(triangles, randomPositions[1], randomScales[1], yellow);
-
-    LoadApertureHexagon(triangles, randomPositions[2], randomScales[2], cyan);
-    LoadApertureHexagon(triangles, randomPositions[3], randomScales[3], cyan);
-
-    LoadApertureHexagon(triangles, randomPositions[4], randomScales[4], purple);
-    LoadApertureHexagon(triangles, randomPositions[5], randomScales[5], purple);
+    for (int i = 0; i < randomPositions.size(); i++){
+      int colour = rand() % 3;
+      if (colour == 0) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
+      else if (colour == 1) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
+      else if (colour == 2) LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
+    }
 
     for (int i = lastIndex; i < triangles.size(); i++){
       triangles[i].v0 -= cameraPos;
@@ -346,7 +346,7 @@ void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Li
   DrawRows(screen, lights, leftPixels, rightPixels);
 }
 
-void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights){
+void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& colours, const vector<Light> lights){
   vec4 newLightPos = vec4(0, 0, 0, 0);
   for (size_t i = 0; i < lights.size(); i++) {
     newLightPos += lights[i].lightPos;
@@ -360,11 +360,16 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<L
   vec2 centre = vec2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
   vec2 A = centre - light;
 
-  for (int i = 0; i < 5; i++){
-    vec2 centrePoint = A * float((i+4)-drand48());
+  for (int i = 0; i < positions.size(); i++){
+    vec2 centrePoint = A * float((i%8) + 1 - drand48());
     positions[i] = centrePoint;
     int scale = int(glm::distance(centre, centrePoint)) % 20;
     scales[i] = float(scale)/1000;
+
+    int colour = rand() % 3;
+    if (colour == 0) colours[i] = yellow;
+    else if (colour == 1) colours[i] = cyan;
+    else if (colour == 2) colours[i] = purple;
   }
 }
 
