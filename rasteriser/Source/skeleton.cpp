@@ -40,6 +40,7 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& 
 void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vector<Light> lights);
 vector<Light> getTempLights(vector<Light> lights);
 bool lineClip(vec2& start, vec2& end);
+void polygonClipping(vector<Vertex> vertices, vector<Vertex>& inList);
 
 int main( int argc, char* argv[] )
 {
@@ -128,18 +129,30 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
     }
   }
 
+  mat4 M;
+  RotationMatrix(M);
+
   /* First pass is for computing the image buffer */
   for( uint32_t i=0; i < triangles.size(); ++i ) {
       vector<Vertex> vertices(3);
-      vertices[0].position = triangles[i].v0;
-      vertices[1].position = triangles[i].v1;
-      vertices[2].position = triangles[i].v2;
+      if (i < lastIndex) {
+        vertices[0].position = M * (triangles[i].v0 - cameraPos);
+        vertices[1].position = M * (triangles[i].v1 - cameraPos);
+        vertices[2].position = M * (triangles[i].v2 - cameraPos);
+      }
+      else{
+        vertices[0].position = triangles[i].v0;
+        vertices[1].position = triangles[i].v1;
+        vertices[2].position = triangles[i].v2;
+      }
       currentNormal = triangles[i].normal;
       currentReflectance = triangles[i].color;
       for (int v = 0; v < 3; ++v) {
           vertices[v].object = triangles[i].object;
       }
-      DrawPolygon( screen, vertices, lights, i, lastIndex );
+      vector<Vertex> clippedPoints;
+      polygonClipping(vertices, clippedPoints);
+      DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
   }
 
   pass++;
@@ -147,15 +160,24 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
   /* Second pass is for drawing the actual pixels */
   for( uint32_t i=0; i < triangles.size(); ++i ) {
       vector<Vertex> vertices(3);
-      vertices[0].position = triangles[i].v0;
-      vertices[1].position = triangles[i].v1;
-      vertices[2].position = triangles[i].v2;
+      if (i < lastIndex) {
+        vertices[0].position = M * (triangles[i].v0 - cameraPos);
+        vertices[1].position = M * (triangles[i].v1 - cameraPos);
+        vertices[2].position = M * (triangles[i].v2 - cameraPos);
+      }
+      else{
+        vertices[0].position = triangles[i].v0;
+        vertices[1].position = triangles[i].v1;
+        vertices[2].position = triangles[i].v2;
+      }
       currentNormal = triangles[i].normal;
       currentReflectance = triangles[i].color;
       for (int v = 0; v < 3; ++v) {
           vertices[v].object = triangles[i].object;
       }
-      DrawPolygon( screen, vertices, lights, i, lastIndex );
+      vector<Vertex> clippedPoints;
+      polygonClipping(vertices, clippedPoints);
+      DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
   }
 
   pass--;
@@ -165,14 +187,7 @@ void VertexShader( const Vertex& vertex, Pixel& projPos, int index, int lastInde
   mat4 M;
   RotationMatrix(M);
   vec4 temp;
-  if (index < lastIndex) temp = M * (vertex.position - cameraPos); // * cam_rotation
-  else {
-    // cout << vertex.object << endl;
-    temp = vertex.position;
-    // cout << temp.z << endl;
-  }
-
-  // cout << "temp: " << temp.x << " " << temp.y << " " << temp.z << endl;
+  temp = vertex.position;
 
   projPos.x = focalLength * (temp.x / temp.z) + SCREEN_WIDTH / 2;
   projPos.y = focalLength * (temp.y / temp.z) + SCREEN_HEIGHT / 2;
@@ -244,34 +259,23 @@ void Interpolate( Pixel a, Pixel b, vector<Pixel>& result ) {
 }
 
 void DrawLineSDL( screen* screen, const vector<Light> lights, Pixel a, Pixel b ) {
-  vec2 start = vec2(a.x, a.y);
-  vec2 end = vec2(b.x, b.y);
-  bool accept = lineClip(start, end);
+  int pixels = glm::max( abs(a.x - b.x), abs(a.y - b.y) ) + 1;
+  vector<Pixel> line( pixels );
+  Interpolate( a, b, line );
 
-  if (accept){
-    a.x = start.x;
-    a.y = start.y;
-    b.x = end.x;
-    b.y = end.y;
-
-    int pixels = glm::max( abs(a.x - b.x), abs(a.y - b.y) ) + 1;
-    vector<Pixel> line( pixels );
-    Interpolate( a, b, line );
-
-    if (pass == 0) {
-      for (int i = 0; i < pixels; i++) {
-        line[i].object = a.object;
-        ComputeImageBuffer(lights, line[i]);
-      }
-    } else {
-      for (int i = 0; i < pixels; i++) {
-        line[i].object = a.object;
-        bool edge = (i == 0 || i == (pixels-1));
-        PixelShader(screen, lights, line[i], edge);
-      }
+  if (pass == 0) {
+    for (int i = 0; i < pixels; i++) {
+      line[i].object = a.object;
+      ComputeImageBuffer(lights, line[i]);
     }
   }
-
+  else {
+    for (int i = 0; i < pixels; i++) {
+      line[i].object = a.object;
+      bool edge = (i == 0 || i == (pixels-1));
+      PixelShader(screen, lights, line[i], edge);
+    }
+  }
 }
 
 /* Setup the two arrays for start and end position of each row */
@@ -341,24 +345,29 @@ void DrawRows(screen* screen, const vector<Light> lights, const vector<Pixel>& l
 void DrawPolygon(screen* screen, const vector<Vertex>& vertices, const vector<Light> lights, int index, int lastIndex )
 {
   int V = vertices.size();
-  vector<Pixel> vertexPixels( V );
-  vec3 shadow = vec3(1, 1, 1);
-  for( int i=0; i<V; ++i ) {
-    VertexShader( vertices[i], vertexPixels[i], index, lastIndex );
-    int x = vertexPixels[i].x;
-    int y = vertexPixels[i].y;
-    if (vertexPixels[i].zinv > shadowMap[y][x]) {
-      shadow = vec3(0, 0, 0);
+  if (V > 0){
+    vector<Pixel> vertexPixels( V );
+    vec3 shadow = vec3(1, 1, 1);
+    for( int i=0; i<V; ++i ) {
+      VertexShader( vertices[i], vertexPixels[i], index, lastIndex );
+      int x = vertexPixels[i].x;
+      int y = vertexPixels[i].y;
+      if (vertexPixels[i].zinv > shadowMap[y][x]) {
+        shadow = vec3(0, 0, 0);
+      }
     }
+
+    vector<Pixel> leftPixels;
+    vector<Pixel> rightPixels;
+    ComputePolygonRows( vertexPixels, leftPixels, rightPixels );
+
+    for (int i=0; i < leftPixels.size(); i++) {
+      leftPixels[i].object = vertexPixels[0].object;
+      rightPixels[i].object = vertexPixels[0].object;
+    }
+
+    DrawRows(screen, lights, leftPixels, rightPixels);
   }
-  vector<Pixel> leftPixels;
-  vector<Pixel> rightPixels;
-  ComputePolygonRows( vertexPixels, leftPixels, rightPixels );
-  for (int i=0; i < leftPixels.size(); i++) {
-    leftPixels[i].object = vertexPixels[0].object;
-    rightPixels[i].object = vertexPixels[0].object;
-  }
-  DrawRows(screen, lights, leftPixels, rightPixels);
 }
 
 void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& colours, const vector<Light> lights){
@@ -422,55 +431,49 @@ vector<Light> getTempLights(vector<Light> lights){
 
 // CLIPPING
 
-// Assumes the 2D projected coordinate was passed in
-int computeOutcode(vec2 pos){
-  int code = INSIDE;
+void polygonClipping(vector<Vertex> vertices, vector<Vertex>& inList){
+  vector<Vertex> queries;
+  for (int i = 0; i < vertices.size(); i++){
+    queries.push_back(vertices[i]);
+  }
 
-  if (pos.x < xmin) code |= LEFT;
-  else if (pos.x > xmax) code |= RIGHT;
+  for (int i = 0; i < planes.size(); i++){
+    vector<Vertex> inPoints;
+    float pdot = 0.f;
+    float idot = glm::dot(planes[i].normal, vec3(queries[0].position) - planes[i].point);
 
-  if (pos.y < ymin) code |= BOTTOM;
-  else if (pos.y > ymax) code |= TOP;
+    for (int v = 0; v < queries.size(); v++){
+      float vdot = glm::dot(planes[i].normal, vec3(queries[v].position) - planes[i].point);
 
-  return code;
-}
-
-// Returns true when line should be drawn between points, false otherwise
-bool lineClip(vec2& start, vec2& end){
-  int outcodeStart = computeOutcode(start);
-  int outcodeEnd = computeOutcode(end);
-
-  while(true) {
-    if (!(outcodeStart | outcodeEnd)) return true;
-
-    else if (outcodeStart & outcodeEnd) return false;
-
-    else {
-      int outsideCode = outcodeStart ? outcodeStart : outcodeEnd;
-
-      vec2 tempPos;
-      if (outsideCode & TOP){
-        tempPos = vec2(ymax, start.x + (end.x - start.x) * (ymax - start.y) / (end.y - start.y));
-      }
-      else if (outsideCode & BOTTOM){
-        tempPos = vec2(ymin, start.x + (end.x - start.x) * (ymax - start.y) / (end.y - start.y));
-      }
-      else if (outsideCode & RIGHT){
-        tempPos = vec2(xmax, start.y + (end.y - start.y) * (xmax - start.x) / (end.x - start.x));
-      }
-      else if (outsideCode & LEFT){
-        tempPos = vec2(xmin, start.y + (end.y - start.y) * (xmax - start.x) / (end.x - start.x));
+      if (vdot * pdot < 0){
+        Vertex newPoint;
+        newPoint.position = vec4(vec3(queries[v-1].position) + (pdot / (pdot - vdot)) * (vec3(queries[v].position) - vec3(queries[v-1].position)), 1);
+        newPoint.object = queries[v].object;
+        inPoints.push_back(newPoint);
       }
 
-      if (outsideCode == outcodeStart){
-        start = tempPos;
-        outcodeStart = computeOutcode(start);
+      if (vdot >= 0){
+        inPoints.push_back(queries[v]);
       }
-      else {
-        end = tempPos;
-        outcodeEnd = computeOutcode(end);
-      }
+
+      pdot = vdot;
     }
+
+    if (pdot * idot < 0){
+      Vertex newPoint;
+      newPoint.position = vec4(vec3(queries[queries.size()-1].position) + (pdot / (pdot - idot)) * (vec3(queries[0].position) - vec3(queries[queries.size()-1].position)), 1);
+      newPoint.object = queries[0].object;
+      inPoints.push_back(newPoint);
+    }
+
+    queries.clear();
+    for (int i = 0; i < inPoints.size(); i++){
+      queries.push_back(inPoints[i]);
+    }
+  }
+
+  for (int i = 0; i < queries.size(); i++){
+    inList.push_back(queries[i]);
   }
 }
 

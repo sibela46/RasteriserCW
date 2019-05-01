@@ -32,6 +32,11 @@ struct Vertex {
   string object;
 };
 
+struct ClipPlane {
+  vec3 normal;
+  vec3 point;
+};
+
 mat4 M;
 float xaw = 0.f;
 float yaw = 0.f;
@@ -46,15 +51,21 @@ float shadowMap[SCREEN_HEIGHT][SCREEN_WIDTH];
 vec3 imageBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 // Clipping variables
-const int INSIDE = 0; // 0000
-const int LEFT = 1;   // 0001
-const int RIGHT = 2;  // 0010
-const int BOTTOM = 4; // 0100
-const int TOP = 8;    // 1000
-const int xmin = 0;
-const int xmax = SCREEN_WIDTH-1;
-const int ymin = 0;
-const int ymax = SCREEN_HEIGHT-1;
+// 20
+const float sinatb = 0.342020;
+const float cosatb = 0.939692;
+
+// 25
+const float sina = 0.422618;
+const float cosa = 0.906308;
+
+ClipPlane topPlane = {vec3(0, -cosatb, sinatb), vec3(0, 0, 0 + cameraPos.z)};
+ClipPlane bottomPlane = {vec3(0, cosatb, sinatb), vec3(0, 0, 0 + cameraPos.z)};
+ClipPlane leftPlane = {vec3(cosa, 0, sina), vec3(0, 0, 0 + cameraPos.z)};
+ClipPlane rightPlane = {vec3(-cosa, 0, sina), vec3(0, 0, 0 + cameraPos.z)};
+ClipPlane nearPlane = {vec3(0, 0, 1), vec3(0, 0, 1.5f)};
+ClipPlane farPlane = {vec3(0, 0, -1), vec3(0, 0, 10.f)};
+vector<ClipPlane> planes = {topPlane, bottomPlane, leftPlane, rightPlane, nearPlane, farPlane};
 
 /* Light source variables */
 int lightsStartIndex = 0;
