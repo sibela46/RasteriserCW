@@ -388,7 +388,7 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& 
     vec2 centrePoint = A * float((i%5) + 1 - drand48());
     positions[i] = centrePoint;
     int scale = int(glm::distance(centre, centrePoint)) % 20;
-    scales[i] = float(scale)/1000;
+    scales[i] = float(scale)/100;
 
     int colour = rand() % 3;
     if (colour == 0) colours[i] = yellow;
