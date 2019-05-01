@@ -14,12 +14,12 @@ using glm::mat4;
 void InterpolateCircles( vec2 start, vec2 end, vector<vec2>& result );
 
 void LoadHexagonVertices(vector<vec4> &vertices, float x, float y) {
-  vec4 A( x - 0.5, y + 0.65, -2.3, 1.0 ); // v0 - top left
-  vec4 B( x + 0.5, y + 0.65, -2.3, 1.0 ); // v1
-  vec4 C( x + 0.75, y, -2.3, 1.0 ); // v2
-  vec4 D( x + 0.5, y - 0.65, -2.3, 1.0 ); // v3
-  vec4 E( x - 0.5, y - 0.65, -2.3, 1.0 ); // v4
-  vec4 F( x - 0.75, y, -2.3, 1.0 ); // v5 - left middle
+  vec4 A( x - 0.5, y + 0.65, -1.f, 1.0 ); // v0 - top left
+  vec4 B( x + 0.5, y + 0.65, -1.f, 1.0 ); // v1
+  vec4 C( x + 0.75, y, -1.f, 1.0 ); // v2
+  vec4 D( x + 0.5, y - 0.65, -1.f, 1.0 ); // v3
+  vec4 E( x - 0.5, y - 0.65, -1.f, 1.0 ); // v4
+  vec4 F( x - 0.75, y, -1.f, 1.0 ); // v5 - left middle
 
   vertices.push_back(A);
   vertices.push_back(B);
