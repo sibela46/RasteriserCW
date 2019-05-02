@@ -150,9 +150,10 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       for (int v = 0; v < 3; ++v) {
           vertices[v].object = triangles[i].object;
       }
-      vector<Vertex> clippedPoints;
-      polygonClipping(vertices, clippedPoints);
-      DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      // vector<Vertex> clippedPoints;
+      // polygonClipping(vertices, clippedPoints);
+      // DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
 
   pass++;
@@ -175,9 +176,10 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       for (int v = 0; v < 3; ++v) {
           vertices[v].object = triangles[i].object;
       }
-      vector<Vertex> clippedPoints;
-      polygonClipping(vertices, clippedPoints);
-      DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      // vector<Vertex> clippedPoints;
+      // polygonClipping(vertices, clippedPoints);
+      // DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
 
   pass--;
@@ -388,12 +390,12 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& 
     vec2 centrePoint = A * float((i%5) + 1 - drand48());
     positions[i] = centrePoint;
     int scale = int(glm::distance(centre, centrePoint)) % 20;
-    scales[i] = float(scale)/100;
+    scales[i] = float(scale)/1000;
 
     int colour = rand() % 3;
-    if (colour == 0) colours[i] = yellow;
-    else if (colour == 1) colours[i] = cyan;
-    else if (colour == 2) colours[i] = purple;
+    if (colour == 0) colours[i] = cyan;
+    else if (colour == 1) colours[i] = purple;
+    else if (colour == 2) colours[i] = yellow;
   }
 }
 
