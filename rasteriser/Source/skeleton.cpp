@@ -8,7 +8,6 @@
 #include "Lightbulb.h"
 #include "Lights.h"
 #include "Aperture.h"
-#include "Sphere.h"
 #include "Global.h"
 #include <stdint.h>
 
@@ -53,7 +52,7 @@ int main( int argc, char* argv[] )
   LoadLightModel(triangles);
 
   int lightSize = int((triangles.size() - lightsStartIndex)/100);
-  vector<Light> lights(lightSize);
+  vector<Light> lights(1);
   vector<vec4> lightPositions;
 
   for (size_t i = 0; i < lightSize; i++) {
@@ -70,7 +69,11 @@ int main( int argc, char* argv[] )
   averageLightPos /= lightSize;
 
   int lightsEndIndex = triangles.size();
-  defineLights(averageLightPos, lights);
+  // defineLights(averageLightPos, lights);
+
+  lights[0].lightPos = vec4(0.f, -0.5, -0.7, 1.f);
+  lights[0].lightColour = vec3(1, 1, 1);
+  lights[0].lightPower = 20.1f*vec3(1, 1, 1);
 
   LoadBunnyModel(triangles);
   vector<vec2> randomPositions(numOfHexagons);
@@ -86,18 +89,18 @@ int main( int argc, char* argv[] )
 
     int lastIndex = triangles.size();
 
-    changeLensFlare(randomPositions, randomScales, tempLights);
-
-    for (int i = 0; i < randomPositions.size(); i++){
-      int colour = rand() % 3;
-      LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
-    }
-
-    for (int i = lastIndex; i < triangles.size(); i++){
-      triangles[i].v0 -= initialCameraPos;
-      triangles[i].v1 -= initialCameraPos;
-      triangles[i].v2 -= initialCameraPos;
-    }
+    // changeLensFlare(randomPositions, randomScales, tempLights);
+    //
+    // for (int i = 0; i < randomPositions.size(); i++){
+    //   int colour = rand() % 3;
+    //   LoadApertureHexagon(triangles, randomPositions[i], randomScales[i], colours[i]);
+    // }
+    //
+    // for (int i = lastIndex; i < triangles.size(); i++){
+    //   triangles[i].v0 -= initialCameraPos;
+    //   triangles[i].v1 -= initialCameraPos;
+    //   triangles[i].v2 -= initialCameraPos;
+    // }
 
     Draw(screen, triangles, tempLights, lastIndex);
 
@@ -153,6 +156,7 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       vector<Vertex> clippedPoints;
       polygonClipping(vertices, clippedPoints);
       DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      // DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
 
   pass++;
@@ -178,6 +182,7 @@ void Draw(screen* screen, vector<Triangle> triangles, const vector<Light> lights
       vector<Vertex> clippedPoints;
       polygonClipping(vertices, clippedPoints);
       DrawPolygon( screen, clippedPoints, lights, i, lastIndex );
+      // DrawPolygon( screen, vertices, lights, i, lastIndex );
   }
 
   pass--;
@@ -388,12 +393,12 @@ void getLensFlare(vector<vec2>& positions, vector<float>& scales, vector<vec3>& 
     vec2 centrePoint = A * float((i%5) + 1 - drand48());
     positions[i] = centrePoint;
     int scale = int(glm::distance(centre, centrePoint)) % 20;
-    scales[i] = float(scale)/100;
+    scales[i] = float(scale)/1000;
 
     int colour = rand() % 3;
-    if (colour == 0) colours[i] = yellow;
-    else if (colour == 1) colours[i] = cyan;
-    else if (colour == 2) colours[i] = purple;
+    if (colour == 0) colours[i] = cyan;
+    else if (colour == 1) colours[i] = purple;
+    else if (colour == 2) colours[i] = yellow;
   }
 }
 
@@ -413,7 +418,7 @@ void changeLensFlare(vector<vec2>& positions, vector<float>& scales, const vecto
   for (int i = 0; i < positions.size(); i++){
     float scaleFactor = initialCameraPos.z - cameraPos.z;
     int scale = int(glm::distance(centre, positions[i])) % 20;
-    scales[i] = float(scale)/1000 + scaleFactor/200;
+    scales[i] = float(scale)/1000 + scaleFactor/100;
   }
 }
 

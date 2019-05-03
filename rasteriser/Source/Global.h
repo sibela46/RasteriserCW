@@ -69,8 +69,8 @@ vector<ClipPlane> planes = {topPlane, bottomPlane, leftPlane, rightPlane, nearPl
 
 /* Light source variables */
 int lightsStartIndex = 0;
-int numOfHexagons = 12;
-vec3 indirectLightPowerPerArea = 0.7f*vec3( 1.f, 1.f, 1.f );
+int numOfHexagons = 8;
+vec3 indirectLightPowerPerArea = 0.2f*vec3( 1.f, 1.f, 1.f );
 vec4 currentNormal;
 vec3 currentReflectance;
 
